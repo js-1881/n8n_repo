@@ -8,6 +8,7 @@ import numpy as np
 import os
 import re
 import time
+start = time.time()
 
 app = FastAPI()
 @app.get("/")
@@ -175,6 +176,9 @@ async def process_file(file: UploadFile = File(...)):
         )
         print("✅ Excel file generated and response returned.")
         print("🥕🥕") 
+        end = time.time()
+        print(f"🕒 Finished in {end - start:.2f} seconds")
 
     except Exception as e:
         return {"error": str(e)}
+        
