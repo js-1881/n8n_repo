@@ -6,3 +6,4 @@ numpy
 requests
 thefuzz
 python-Levenshtein
+python-multipart
