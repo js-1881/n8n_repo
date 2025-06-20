@@ -146,6 +146,7 @@ async def process_file(file: UploadFile = File(...)):
         df_final["hub_height_m"] = df_final["hub_height_m"].apply(lambda x: int(x) if x != "0" else "")
 
         df_final = df_final.dropna(subset=["latitude"])
+        print("🥕") 
 
         # Step 7: Export to Excel and return as response
         output = io.BytesIO()
@@ -159,6 +160,8 @@ async def process_file(file: UploadFile = File(...)):
             media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             headers={"Content-Disposition": "attachment; filename=processed_results.xlsx"}
         )
+        print("✅ Excel file generated and response returned.")
+        print("🥕🥕") 
 
     except Exception as e:
         return {"error": str(e)}
