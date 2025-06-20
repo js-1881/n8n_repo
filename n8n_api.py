@@ -105,6 +105,8 @@ async def process_file(file: UploadFile = File(...)):
             'add_turbine'
         ] = df_blind_fetch['turbine_model_clean'].str.strip() + ' ' + df_blind_fetch['net_power_kw'].astype(str)
 
+        print("📦📦 reading excel")
+
         # Step 6: Match turbine names from GitHub
         ref_response = requests.get(EXCEL_FILE_URL)
         ref_response.raise_for_status()
@@ -143,7 +145,7 @@ async def process_file(file: UploadFile = File(...)):
         ]]
 
         df_final = pd.merge(df_excel, df_fuzzy, on="unit_mastr_id", how="left")
-        df_final["hub_height_m"] = df_final["hub_height_m"].apply(lambda x: int(x) if x != "0" else "")
+        df_final["hub_height_m"] = df_final["hub_height_m"].apply(lambda x: int(x) if not pd.isnull(x) and not np.isnan(x) else "")
 
         df_final = df_final.dropna(subset=["latitude"])
         print("🥕") 
