@@ -20,6 +20,102 @@ async def root():
 
 EXCEL_FILE_URL = "https://github.com/js-1881/n8n_repo/raw/main/turbine_types_id_enervis.xlsx"
 
+# Anemos credentials
+EMAIL    = "amani@flex-power.energy"
+PASSWORD = "ypq_CZE2wpg*jgu7hfk"
+
+# --- Anemos helper functions ---
+def get_token():
+    url = "https://keycloak.anemosgmbh.com/auth/realms/awis/protocol/openid-connect/token"
+    data = {
+        'client_id': 'webtool_vue',
+        'grant_type': 'password',
+        'username': EMAIL,
+        'password': PASSWORD
+    }
+    r = requests.post(url, data=data)
+    r.raise_for_status()
+    return r.json()['access_token']
+
+def get_historical_product_id(token):
+    url = "https://api.anemosgmbh.com/products_mva"
+    headers = {"Authorization": f"Bearer {token}"}
+    r = requests.get(url, headers=headers)
+    r.raise_for_status()
+    for p in r.json():
+        if "hist-ondemand" in p["mva_product_type"]["name"].lower():
+            return p["id"]
+    raise RuntimeError("No 'hist-ondemand' product found")
+
+def start_historical_job_from_df(token, product_id, df_input):
+    url = "https://api.anemosgmbh.com/jobs"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    parkinfo = []
+    for _, row in df_input.iterrows():
+        if pd.notna(row["Matched_Turbine_ID"]):
+            parkinfo.append({
+                "id":             int(row["malo"]),
+                "lat":            str(row["latitude"]),
+                "lon":            str(row["longitude"]),
+                "turbine_type_id":int(row["Matched_Turbine_ID"]),
+                "hub_height":     int(row["hub_height_m"])
+            })
+    if not parkinfo:
+        raise RuntimeError("No valid parkinfo entries")
+    payload = {
+        "mva_product_id": product_id,
+        "parameters":     {"parkinfo": parkinfo}
+    }
+    r = requests.post(url, headers=headers, json=payload)
+    r.raise_for_status()
+    return r.json()["uuid"]
+
+def wait_for_job_completion(token, job_uuid, poll_interval=10):
+    url = f"https://api.anemosgmbh.com/jobs/{job_uuid}"
+    headers = {"Authorization": f"Bearer {token}"}
+    while True:
+        r = requests.get(url, headers=headers)
+        # handle token expiry
+        if r.status_code == 401:
+            token = get_token()
+            headers["Authorization"] = f"Bearer {token}"
+            r = requests.get(url, headers=headers)
+        r.raise_for_status()
+        info = r.json()
+        if isinstance(info, list): 
+            info = info[0]
+        status = info.get("status","")
+        if status.lower() in ("done","completed"):
+            return info
+        if status.lower() in ("failed","canceled"):
+            raise RuntimeError(f"Job ended with status {status}")
+        time.sleep(poll_interval)
+
+def download_and_load_csv(url, token):
+    r = requests.get(url, headers={"Authorization":f"Bearer {token}"})
+    r.raise_for_status()
+    return pd.read_csv(io.StringIO(r.text))
+
+def download_result_files(job_info, token):
+    files = job_info.get("files")
+    if files:
+        return [download_and_load_csv(f["url"], token) for f in files]
+    # fallback to 'info'→'results'
+    results = job_info.get("info",{}).get("results",[])
+    dfs = []
+    for res in results:
+        year_data = res.get("Marktwertdifferenzen",{})
+        df = pd.DataFrame.from_dict(year_data, orient="index", columns=["Marktwertdifferenz"])
+        df.index.name = "Year"
+        df = df.reset_index().assign(id=res["id"])
+        dfs.append(df)
+    return dfs if dfs else None
+
+
+
 @app.post("/process")
 async def process_file(file: UploadFile = File(...)):
     try:
@@ -160,24 +256,63 @@ async def process_file(file: UploadFile = File(...)):
         df_final.drop(columns=['hub_height_m_numeric'], inplace=True)
 
         df_final = df_final.dropna(subset=["latitude"])
-        print("🥕") 
+        print("🍣🍣🍣")
 
-        # Step 7: Export to Excel and return as response
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df_final.to_excel(writer, sheet_name='Processed Data', index=False)
-            df_ref.to_excel(writer, sheet_name='Reference Data', index=False)
+        # --- 1. Authenticate & submit historical job ---
+        token      = get_token()
+        product_id = get_historical_product_id(token)
+        job_uuid   = start_historical_job_from_df(token, product_id, df_final)
+        job_info   = wait_for_job_completion(token, job_uuid)
 
-        output.seek(0)
-        return StreamingResponse(
-            output,
-            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            headers={"Content-Disposition": "attachment; filename=processed_results.xlsx"}
-        )
+        # --- 2. Download & concatenate results ---
+        dfs = download_result_files(job_info, token)
+        all_df = pd.concat(dfs, ignore_index=True)
+        all_df["Year"] = all_df["Year"].astype(str)
+
+        # Only use years that actually exist
+        target_years  = ["2021","2023","2024"]
+        valid_years   = [y for y in target_years if y in all_df["Year"].unique()]
+        all_df        = all_df[all_df["Year"].isin(valid_years)]
+        pivot_temp    = all_df.pivot_table(
+            index="id", columns="Year", values="Marktwertdifferenz"
+        ).reset_index()
+
+        available_cols = [y for y in valid_years if y in pivot_temp.columns]
+        pivot_temp["avg"] = pivot_temp[available_cols].mean(axis=1, skipna=True)
+
+        df_filtered = all_df.loc[
+            all_df.groupby(["id","Year"])["avg"].idxmin()
+        ]
+        df_enervis_pivot = df_filtered.pivot(
+            index="id", columns="Year", values="Marktwertdifferenz"
+        ).rename_axis(None, axis=1).reset_index()
+        # ensure every target year exists
+        for y in valid_years:
+            if y not in df_enervis_pivot.columns:
+                df_enervis_pivot[y] = np.nan
+        df_enervis_pivot["avg_enervis"] = df_enervis_pivot[valid_years].mean(axis=1, skipna=True)
+
         print("✅ Excel file generated and response returned.")
         print("🥕🥕") 
         end = time.time()
         print(f"🕒 Finished in {end - start:.2f} seconds")
+
+
+        # Export to Excel and return as response
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            df_final.to_excel(writer,    sheet_name="Processed Data",   index=False)
+            df_ref.to_excel(writer,      sheet_name="Reference Data",   index=False)
+            df_enervis_pivot.to_excel(writer, sheet_name="Historical Results", index=False)
+        output.seek(0)
+
+        print(f"🕒 Finished in {time.time()-start:.2f}s")
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition":"attachment; filename=full_results.xlsx"}
+        )
+        
 
     except Exception as e:
         return {"error": str(e)}
