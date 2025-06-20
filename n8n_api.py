@@ -10,6 +10,12 @@ import re
 import time
 
 app = FastAPI()
+@app.get("/")
+async def root():
+    return {
+        "status": "ok",
+        "message": "n8n-Python service is running. POST your file to /process"
+    }
 
 EXCEL_FILE_URL = "https://github.com/js-1881/n8n_repo/raw/main/turbine_types_id_enervis.xlsx"
 
@@ -144,8 +150,13 @@ async def process_file(file: UploadFile = File(...)):
             "unit_mastr_id", "latitude", "longitude", "Matched_Turbine_ID", "hub_height_m"
         ]]
 
+        print("🥕🥕🥕🥕🥕🥕🥕🥕") 
+
         df_final = pd.merge(df_excel, df_fuzzy, on="unit_mastr_id", how="left")
-        df_final["hub_height_m"] = df_final["hub_height_m"].apply(lambda x: int(x) if not pd.isnull(x) and not np.isnan(x) else "")
+        df_final['hub_height_m_numeric'] = pd.to_numeric(df_final['hub_height_m'], errors='coerce')
+
+        df_final['hub_height_m'] = (df_final['hub_height_m_numeric'].apply(lambda x: int(x) if pd.notna(x) else ""))
+        df_final.drop(columns=['hub_height_m_numeric'], inplace=True)
 
         df_final = df_final.dropna(subset=["latitude"])
         print("🥕") 
