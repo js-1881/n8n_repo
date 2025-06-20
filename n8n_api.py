@@ -41,6 +41,8 @@ async def process_file(file: UploadFile = File(...)):
         ]
         unique_see = set(valid_ids)
 
+        print("✅ Valid IDs to fetch:", valid_ids)
+
         # Step 3: Fetch token
         auth_response = requests.post(
             'https://api.blindleister.de/api/v1/authentication/get-access-token',
