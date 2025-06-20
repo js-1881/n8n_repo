@@ -269,28 +269,23 @@ async def process_file(file: UploadFile = File(...)):
         all_df = pd.concat(dfs, ignore_index=True)
         all_df["Year"] = all_df["Year"].astype(str)
 
-        # Only use years that actually exist
-        target_years  = ["2021","2023","2024"]
-        valid_years   = [y for y in target_years if y in all_df["Year"].unique()]
-        all_df        = all_df[all_df["Year"].isin(valid_years)]
-        pivot_temp    = all_df.pivot_table(
-            index="id", columns="Year", values="Marktwertdifferenz"
+        # 1) Pivot to wide so each row has all year values
+        pivot_temp = all_df.pivot_table(
+            index="id",
+            columns="Year",
+            values="Marktwertdifferenz",
+            aggfunc="mean"       # if there were duplicates per (id,Year), they get averaged
         ).reset_index()
-
-        available_cols = [y for y in valid_years if y in pivot_temp.columns]
-        pivot_temp["avg"] = pivot_temp[available_cols].mean(axis=1, skipna=True)
-
-        df_filtered = all_df.loc[
-            all_df.groupby(["id","Year"])["avg"].idxmin()
-        ]
-        df_enervis_pivot = df_filtered.pivot(
-            index="id", columns="Year", values="Marktwertdifferenz"
-        ).rename_axis(None, axis=1).reset_index()
-        # ensure every target year exists
-        for y in valid_years:
-            if y not in df_enervis_pivot.columns:
-                df_enervis_pivot[y] = np.nan
-        df_enervis_pivot["avg_enervis"] = df_enervis_pivot[valid_years].mean(axis=1, skipna=True)
+        
+        # 2) Restrict to the years you care about and compute the row‐wise average
+        target_years = ["2021", "2023", "2024"]
+        available = [y for y in target_years if y in pivot_temp.columns]
+        pivot_temp["avg_enervis"] = pivot_temp[available].mean(axis=1, skipna=True)
+        
+        # 3) Now, if there *still* are multiple rows with the same id (rare after pivot,
+        #     but possible if you pivoted on extra levels), pick the one with the lowest avg:
+        idx = pivot_temp.groupby("id")["avg_enervis"].idxmin()
+        df_enervis_pivot = pivot_temp.loc[idx, ["id"] + available + ["avg_enervis"]]
 
         print("✅ Excel file generated and response returned.")
         print("🥕🥕") 
