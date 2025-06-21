@@ -422,7 +422,7 @@ async def process_file(file: UploadFile = File(...)):
             merge_a1, 
             df_enervis_pivot_filter, 
             left_on = ('malo'),
-            right_on = ('id')
+            right_on = ('id'),
             how='left'
         )
 
