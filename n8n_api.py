@@ -288,7 +288,9 @@ async def process_file(file: UploadFile = File(...)):
                 df_enervis_pivot[year] = np.nan
         
         # Step 4: Compute row-wise average over existing target years
-        df_enervis_pivot["avg_enervis"] = df_enervis_pivot[target_years].mean(axis=1, skipna=True)
+        df_pivot["avg_enervis"] = df_enervis_pivot[target_years].mean(axis=1, skipna=True)
+        columns_to_keep = ["id"] + target_years + ["avg_enervis"]
+        df_enervis_pivot = df_pivot[columns_to_keep]
 
         print("✅ Excel file generated and response returned.")
         print("🥕🥕") 
