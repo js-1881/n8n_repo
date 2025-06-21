@@ -400,7 +400,30 @@ async def process_file(file: UploadFile = File(...)):
         columns_to_keep = ["id"] + target_years + ["avg_enervis"]
         df_enervis_pivot_filter = df_enervis_pivot[columns_to_keep]
 
-       
+        columnskeep = ["Projekt", "Gesellschaft", "tech", "malo", "unit_mastr_id", "Nennleistung [MW]"]
+
+        df_final = df_final[columnskeep]
+        df_excel_agg = df_final.groupby("malo").agg({
+            'unit_mastr_id': 'first',
+            'Projekt': 'first', 
+            'Gesellschaft': 'first', 
+            'tech': 'first',
+            'Nennleistung [MW]': 'first'
+        }).reset_index()
+        
+        merge_a1 = pd.merge(
+            df_excel_agg, 
+            final_weighted_blindleister, 
+            on = ('unit_mastr_id'),
+            how='left'
+        )
+        
+        merge_a2 = = pd.merge(
+            merge_a1, 
+            df_enervis_pivot_filter, 
+            on = ('malo'),
+            how='left'
+        )
 
         print("✅ Excel file generated and response returned.")
         print("🥕🥕") 
@@ -409,8 +432,7 @@ async def process_file(file: UploadFile = File(...)):
         # Export to Excel and return as response
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            df_final.to_excel(writer,    sheet_name="Processed Data",   index=False)
-            df_ref.to_excel(writer,      sheet_name="Reference Data",   index=False)
+            merge_a2.to_excel(writer,    sheet_name="Processed Data",   index=False)
             df_enervis_pivot_filter.to_excel(writer, sheet_name="Historical Results", index=False)
             final_weighted_blindleister.to_excel(writer, sheet_name="final_weighted_blindleister", index=False)
         output.seek(0)
