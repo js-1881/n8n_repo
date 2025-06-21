@@ -223,7 +223,7 @@ async def process_file(file: UploadFile = File(...)):
             "monthly_reference_market_price_eur_mwh",
         ]
         df_flat = df_flat[cols]
-        df_all_flat = df_all_flat.copy()
+        df_all_flat = df_flat.copy()
         
         df_all_flat['weighted_per_mwh_monthly'] = (
             ((df_all_flat['monthly_generated_energy_mwh'] * df_all_flat['monthly_market_price_eur_mwh']) -
@@ -405,8 +405,6 @@ async def process_file(file: UploadFile = File(...)):
         print("✅ Excel file generated and response returned.")
         print("🥕🥕") 
         end = time.time()
-        print(f"🕒 Finished in {end - start:.2f} seconds")
-
 
         # Export to Excel and return as response
         output = io.BytesIO()
