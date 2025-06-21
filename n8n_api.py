@@ -418,7 +418,7 @@ async def process_file(file: UploadFile = File(...)):
             how='left'
         )
         
-        merge_a2 = = pd.merge(
+        merge_a2 = pd.merge(
             merge_a1, 
             df_enervis_pivot_filter, 
             on = ('malo'),
