@@ -288,9 +288,9 @@ async def process_file(file: UploadFile = File(...)):
                 df_enervis_pivot[year] = np.nan
         
         # Step 4: Compute row-wise average over existing target years
-        df_pivot["avg_enervis"] = df_enervis_pivot[target_years].mean(axis=1, skipna=True)
+        df_enervis_pivot["avg_enervis"] = df_enervis_pivot[target_years].mean(axis=1, skipna=True)
         columns_to_keep = ["id"] + target_years + ["avg_enervis"]
-        df_enervis_pivot = df_pivot[columns_to_keep]
+        df_enervis_pivot_filter = df_enervis_pivot[columns_to_keep]
 
         print("✅ Excel file generated and response returned.")
         print("🥕🥕") 
@@ -303,7 +303,7 @@ async def process_file(file: UploadFile = File(...)):
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             df_final.to_excel(writer,    sheet_name="Processed Data",   index=False)
             df_ref.to_excel(writer,      sheet_name="Reference Data",   index=False)
-            df_enervis_pivot.to_excel(writer, sheet_name="Historical Results", index=False)
+            df_enervis_pivot_filter.to_excel(writer, sheet_name="Historical Results", index=False)
         output.seek(0)
 
         print(f"🕒 Finished in {time.time()-start:.2f}s")
