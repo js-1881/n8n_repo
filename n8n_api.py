@@ -418,13 +418,15 @@ async def process_file(file: UploadFile = File(...)):
             how='left'
         )
         
-        merge_a2 = = pd.merge(
+        merge_a2 = pd.merge(
             merge_a1, 
             df_enervis_pivot_filter, 
             left_on = ('malo'),
             right_on = ('id')
             how='left'
         )
+
+        merge_a2 = merge_a2.drop(columns=['id'])
 
         print("✅ Excel file generated and response returned.")
         print("🥕🥕") 
