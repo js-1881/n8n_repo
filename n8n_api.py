@@ -222,7 +222,49 @@ async def process_file(file: UploadFile = File(...)):
             "monthly_market_price_eur_mwh",
             "monthly_reference_market_price_eur_mwh",
         ]
-        df_flat = df_flat[cols]
+        df_all_flat = df_flat[cols]
+
+        df_all_flat['weighted_per_mwh_monthly'] = (
+            ((df_all_flat['monthly_generated_energy_mwh'] * df_all_flat['monthly_market_price_eur_mwh']) -
+             (df_all_flat['monthly_generated_energy_mwh'] * df_all_flat['monthly_reference_market_price_eur_mwh'])) /
+            df_all_flat['monthly_generated_energy_mwh'] *
+            df_all_flat['monthly_energy_contribution_percent'] / 100 * 12
+        )
+
+        print("🥨🥨🥨")
+        year_agg_per_unit = df_all_flat.groupby(['year', 'unit_mastr_id'])['weighted_per_mwh_monthly'].mean().reset_index(name='weighted_year_agg_per_unit_eur_mwh')
+        df_year_agg_per_unit = pd.DataFrame(year_agg_per_unit)
+
+        weighted_years_pivot = df_year_agg_per_unit.pivot(
+            index='unit_mastr_id',
+            columns='year',
+            values='weighted_year_agg_per_unit_eur_mwh'
+        ).reset_index()
+        
+        
+        # Rename columns for clarity
+        weighted_years_pivot.columns.name = None  # remove the axis name
+        weighted_years_pivot = weighted_years_pivot.rename(columns={
+            2021: 'weighted_2021_eur_mwh_blindleister',
+            2023: 'weighted_2023_eur_mwh_blindleister',
+            2024: 'weighted_2024_eur_mwh_blindleister'
+        })
+        
+        # Add a column to average the available yearly weighted values
+        weighted_years_pivot['average_weighted_eur_mwh_blindleister'] = weighted_years_pivot[
+            ['weighted_2021_eur_mwh_blindleister', 'weighted_2023_eur_mwh_blindleister', 'weighted_2024_eur_mwh_blindleister']
+        ].mean(axis=1, skipna=True)
+        
+        # Show only the desired columns
+        final_weighted_blindleister = weighted_years_pivot[[
+            'unit_mastr_id',
+            'weighted_2021_eur_mwh_blindleister',
+            'weighted_2023_eur_mwh_blindleister',
+            'weighted_2024_eur_mwh_blindleister',
+            'average_weighted_eur_mwh_blindleister'
+        ]]
+
+        
 
         # Step 4: Fetch generator details
         all_records = []
@@ -357,6 +399,8 @@ async def process_file(file: UploadFile = File(...)):
         columns_to_keep = ["id"] + target_years + ["avg_enervis"]
         df_enervis_pivot_filter = df_enervis_pivot[columns_to_keep]
 
+       
+
         print("✅ Excel file generated and response returned.")
         print("🥕🥕") 
         end = time.time()
@@ -369,7 +413,7 @@ async def process_file(file: UploadFile = File(...)):
             df_final.to_excel(writer,    sheet_name="Processed Data",   index=False)
             df_ref.to_excel(writer,      sheet_name="Reference Data",   index=False)
             df_enervis_pivot_filter.to_excel(writer, sheet_name="Historical Results", index=False)
-            df_flat.to_excel(writer, sheet_name="blindleister_flat", index=False)
+            final_weighted_blindleister.to_excel(writer, sheet_name="final_weighted_blindleister", index=False)
         output.seek(0)
 
         print(f"🕒 Finished in {time.time()-start:.2f}s")
