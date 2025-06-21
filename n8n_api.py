@@ -268,24 +268,54 @@ async def process_file(file: UploadFile = File(...)):
         dfs = download_result_files(job_info, token)
         all_df = pd.concat(dfs, ignore_index=True)
         all_df["Year"] = all_df["Year"].astype(str)
-
-        # 1) Pivot to wide so each row has all year values
+        
+        # Target years to include
+        target_years = ["2021", "2023", "2024"]
+        
+        # Filter years that are actually present in the data
+        existing_years = all_df["Year"].unique().tolist()
+        valid_years = [y for y in target_years if y in existing_years]
+        
+        # Keep only valid years
+        all_df = all_df[all_df["Year"].isin(valid_years)].copy()
+        
+        # Pivot to wide format to calculate per-id averages
         pivot_temp = all_df.pivot_table(
             index="id",
             columns="Year",
             values="Marktwertdifferenz",
-            aggfunc="mean"       # if there were duplicates per (id,Year), they get averaged
+            aggfunc="mean"
         ).reset_index()
         
-        # 2) Restrict to the years you care about and compute the row‐wise average
-        target_years = ["2021", "2023", "2024"]
+        # Check which year columns are present
         available = [y for y in target_years if y in pivot_temp.columns]
+        
+        # Calculate average across years
         pivot_temp["avg_enervis"] = pivot_temp[available].mean(axis=1, skipna=True)
         
-        # 3) Now, if there *still* are multiple rows with the same id (rare after pivot,
-        #     but possible if you pivoted on extra levels), pick the one with the lowest avg:
-        idx = pivot_temp.groupby("id")["avg_enervis"].idxmin()
-        df_enervis_pivot = pivot_temp.loc[idx, ["id"] + available + ["avg_enervis"]]
+        # Merge average back into the original long-format data
+        df_with_avg = pd.merge(all_df, pivot_temp[["id", "avg_enervis"]], on="id", how="left")
+        
+        # Deduplicate by keeping only one row per (id, Year) with min avg (if duplicates exist)
+        df_filtered = df_with_avg.loc[
+            df_with_avg.groupby(["id", "Year"])["avg_enervis"].idxmin()
+        ]
+        
+        # Pivot again to wide format for final output
+        df_enervis_pivot = df_filtered.pivot(
+            index="id",
+            columns="Year",
+            values="Marktwertdifferenz"
+        ).rename_axis(None, axis=1).reset_index()
+        
+        # Ensure all target years are present
+        for year in target_years:
+            if year not in df_enervis_pivot.columns:
+                df_enervis_pivot[year] = np.nan
+        
+        # Final average (again, only using available columns)
+        existing_columns = [col for col in target_years if col in df_enervis_pivot.columns]
+        df_enervis_pivot["avg_enervis"] = df_enervis_pivot[existing_columns].mean(axis=1, skipna=True)
 
         print("✅ Excel file generated and response returned.")
         print("🥕🥕") 
