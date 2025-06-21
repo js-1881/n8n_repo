@@ -160,13 +160,14 @@ async def process_file(file: UploadFile = File(...)):
         }
 
         # Fetch blindleister price
+        print("🍚🍚")
         # === Years to fetch ===
         years = [2021, 2023, 2024]
+        records = []
         
         # === Loop through each ID and fetch data for each year ===
         for site_id in valid_ids:
             print(f"Processing: {site_id}")
-            records = []
         
             for year in years:
                 payload = {
@@ -189,12 +190,11 @@ async def process_file(file: UploadFile = File(...)):
                     for entry in result:
                         entry['year'] = year
                         records.append(entry)
-                        #print(records)      # testing
                 except Exception as e:
                     print(f"  Year {year}: Error parsing response - {e}")
                     continue
         
-        
+        df_flat = pd.DataFrame(records)
         df_flat = pd.json_normalize(
             records,
             record_path="months",
@@ -222,9 +222,9 @@ async def process_file(file: UploadFile = File(...)):
             "monthly_market_price_eur_mwh",
             "monthly_reference_market_price_eur_mwh",
         ]
-        df_all_flat = df_flat[cols]
-
+        df_flat = df_flat[cols]
         df_all_flat = df_all_flat.copy()
+        
         df_all_flat['weighted_per_mwh_monthly'] = (
             ((df_all_flat['monthly_generated_energy_mwh'] * df_all_flat['monthly_market_price_eur_mwh']) -
              (df_all_flat['monthly_generated_energy_mwh'] * df_all_flat['monthly_reference_market_price_eur_mwh'])) /
