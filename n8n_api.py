@@ -267,12 +267,12 @@ async def process_file(file: UploadFile = File(...)):
         # --- 2. Download & concatenate results ---
         dfs = download_result_files(job_info, token)
         all_df = pd.concat(dfs, ignore_index=True)
-        df_all["Year"] = df_all["Year"].astype(str)
+        all_df["Year"] = all_df["Year"].astype(str)
         target_years = ["2021", "2023", "2024"]
         
         # Step 1: Filter to keep only the minimum Marktwertdifferenz per (id, Year)
-        df_filtered = df_all.loc[
-            df_all.groupby(["id", "Year"])["Marktwertdifferenz"].idxmin()
+        df_filtered = all_df.loc[
+            all_df.groupby(["id", "Year"])["Marktwertdifferenz"].idxmin()
         ].copy()
         
         # Step 2: Pivot to wide format
