@@ -159,6 +159,71 @@ async def process_file(file: UploadFile = File(...)):
             'Authorization': f'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJvcHNAZmxleC1wb3dlci5lbmVyZ3kifQ.Q1cDDds4fzzYFbW59UuZ4362FnmvBUQ8FY4UNhWp2a0'
         }
 
+        # Fetch blindleister price
+        # === Years to fetch ===
+        years = [2021, 2023, 2024]
+        
+        # === Loop through each ID and fetch data for each year ===
+        for site_id in valid_ids:
+            print(f"Processing: {site_id}")
+            records = []
+        
+            for year in years:
+                payload = {
+                    'ids': [site_id],
+                    'year': year
+                }
+        
+                response = requests.post(
+                    'https://api.blindleister.de/api/v1/market-price-atlas-api/get-market-price',
+                    headers = headers,
+                    json=payload
+                )
+        
+                if response.status_code != 200:
+                    print(f"  Year {year}: Failed ({response.status_code}) - {response.text}")
+                    continue
+        
+                try:
+                    result = response.json()
+                    for entry in result:
+                        entry['year'] = year
+                        records.append(entry)
+                        #print(records)      # testing
+                except Exception as e:
+                    print(f"  Year {year}: Error parsing response - {e}")
+                    continue
+        
+        
+        df_flat = pd.json_normalize(
+            records,
+            record_path="months",
+            meta=[
+                "year",
+                "unit_mastr_id",
+                "gross_power_kw",
+                "energy_source",
+                "annual_generated_energy_mwh",
+                "benchmark_market_price_eur_mwh",
+            ],
+            errors="ignore"  # in case some records lack "months"
+        )
+        
+        cols = [
+            "year",
+            "unit_mastr_id",
+            "gross_power_kw",
+            "energy_source",
+            "annual_generated_energy_mwh",
+            "benchmark_market_price_eur_mwh",
+            "month",
+            "monthly_generated_energy_mwh",
+            "monthly_energy_contribution_percent",
+            "monthly_market_price_eur_mwh",
+            "monthly_reference_market_price_eur_mwh",
+        ]
+        df_flat = df_flat[cols]
+
         # Step 4: Fetch generator details
         all_records = []
         for site_id in valid_ids:
@@ -304,6 +369,7 @@ async def process_file(file: UploadFile = File(...)):
             df_final.to_excel(writer,    sheet_name="Processed Data",   index=False)
             df_ref.to_excel(writer,      sheet_name="Reference Data",   index=False)
             df_enervis_pivot_filter.to_excel(writer, sheet_name="Historical Results", index=False)
+            df_flat.to_excel(writer, sheet_name="blindleister_flat", index=False)
         output.seek(0)
 
         print(f"🕒 Finished in {time.time()-start:.2f}s")
