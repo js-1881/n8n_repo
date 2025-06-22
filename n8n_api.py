@@ -418,7 +418,7 @@ async def process_file(file: UploadFile = File(...)):
             how='left'
         )
         
-        df_enervis_pivot_filter['id'] = df_enervis_pivot_filter['id'].astype(str).str.strip()
+        df_enervis_pivot_filter.loc[:, 'id'] = df_enervis_pivot_filter['id'].astype(str).str.strip()
         
         merge_a2 = pd.merge(
             merge_a1, 
