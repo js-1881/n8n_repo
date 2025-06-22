@@ -452,11 +452,16 @@ async def process_file(file: UploadFile = File(...)):
         output.seek(0)
 
         print(f"🕒 Finished in {time.time()-start:.2f}s")
+
+        name, ext = os.path.splitext(file.filename)
+        processed_filename = f"{name}_processed{ext}"
+
         return StreamingResponse(
             output,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition":"attachment; filename=full_results.xlsx"}
+            headers={"Content-Disposition": f"attachment; filename={processed_filename}"}
         )
+        
         
 
     except Exception as e:
