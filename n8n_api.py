@@ -441,8 +441,8 @@ async def process_file(file: UploadFile = File(...)):
             merge_a2.to_excel(writer,    sheet_name="Processed Data",   index=False)
             df_enervis_pivot_filter.to_excel(writer, sheet_name="Historical Results", index=False)
             final_weighted_blindleister.to_excel(writer, sheet_name="final_weighted_blindleister", index=False)
-            df_blind_fetch.to_excel(writer, sheet_name="df_excel_agg", index=False)
-            df_fuzzy.to_excel(writer, sheet_name="df_excel_agg", index=False)
+            df_blind_fetch.to_excel(writer, sheet_name="df_blind_fetch", index=False)
+            df_fuzzy.to_excel(writer, sheet_name="df_fuzzy", index=False)
         output.seek(0)
 
         print(f"🕒 Finished in {time.time()-start:.2f}s")
