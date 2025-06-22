@@ -361,6 +361,7 @@ async def process_file(file: UploadFile = File(...)):
         df_final['hub_height_m_numeric'] = pd.to_numeric(df_final['hub_height_m'], errors='coerce')
 
         df_final['hub_height_m'] = (df_final['hub_height_m_numeric'].apply(lambda x: int(x) if pd.notna(x) else ""))
+        
         df_final.drop(columns=['hub_height_m_numeric'], inplace=True)
 
         #df_final = df_final.dropna(subset=["latitude"])
