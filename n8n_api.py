@@ -415,13 +415,6 @@ async def process_file(file: UploadFile = File(...)):
         merge_a1 = pd.merge(
             df_excel_agg, 
             final_weighted_blindleister, 
-            on = ('unit_mastr_id'),
-            how='left'
-        )
-
-        merge_a1 = pd.merge(
-            df_excel_agg, 
-            final_weighted_blindleister, 
             on = 'unit_mastr_id',
             how='left'
         )
