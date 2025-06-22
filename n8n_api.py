@@ -418,6 +418,25 @@ async def process_file(file: UploadFile = File(...)):
             on = ('unit_mastr_id'),
             how='left'
         )
+
+        merge_a1 = pd.merge(
+            df_excel_agg, 
+            final_weighted_blindleister, 
+            on = 'unit_mastr_id',
+            how='left'
+        )
+        
+        merge_a1 = merge_a1.groupby(['malo'], dropna=False).agg({
+                'unit_mastr_id': 'first',
+                'Projekt': 'first', 
+                'Gesellschaft': 'first', 
+                'tech': 'first',
+                'Nennleistung [MW]': 'first',
+                'weighted_2021_eur_mwh_blindleister': 'min',
+                'weighted_2023_eur_mwh_blindleister': 'min',
+                'weighted_2024_eur_mwh_blindleister': 'min',
+                'average_weighted_eur_mwh_blindleister': 'min'
+            }).reset_index()
         
         df_enervis_pivot_filter['id'] = df_enervis_pivot_filter['id'].astype(str)
         
@@ -442,7 +461,7 @@ async def process_file(file: UploadFile = File(...)):
             df_enervis_pivot_filter.to_excel(writer, sheet_name="Historical Results", index=False)
             final_weighted_blindleister.to_excel(writer, sheet_name="final_weighted_blindleister", index=False)
             df_blind_fetch.to_excel(writer, sheet_name="df_blind_fetch", index=False)
-            df_fuzzy.to_excel(writer, sheet_name="df_fuzzy", index=False)
+            df_final.to_excel(writer, sheet_name="df_final", index=False)
         output.seek(0)
 
         print(f"🕒 Finished in {time.time()-start:.2f}s")
