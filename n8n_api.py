@@ -403,14 +403,8 @@ async def process_file(file: UploadFile = File(...)):
 
         columnskeep = ["Projekt", "Gesellschaft", "tech", "malo", "unit_mastr_id", "Nennleistung [MW]"]
 
-        df_final = df_final[columnskeep]
-        df_excel_agg = df_final.groupby("malo").agg({
-            'unit_mastr_id': 'first',
-            'Projekt': 'first', 
-            'Gesellschaft': 'first', 
-            'tech': 'first',
-            'Nennleistung [MW]': 'first'
-        }).reset_index()
+        df_excel_agg = df_final[columnskeep]
+        
         
         merge_a1 = pd.merge(
             df_excel_agg, 
