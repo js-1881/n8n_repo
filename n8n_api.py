@@ -128,6 +128,8 @@ async def process_file(file: UploadFile = File(...)):
         df_excel['Marktstammdatenregister-ID'] = df_excel['Marktstammdatenregister-ID'].astype(str).str.strip()
         df_excel.dropna(subset=("malo"),axis=0, inplace=True)
 
+        df_excel.rename(columns= {'Marktstammdatenregister-ID': 'unit_mastr_id'}, inplace=True)
+
         df = df_excel
         df['malo'] = df['malo'].astype(str).str.strip()
 
