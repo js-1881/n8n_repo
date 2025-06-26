@@ -121,16 +121,12 @@ async def process_file(file: UploadFile = File(...)):
     try:
         # Step 1: Load user-uploaded Excel
         contents = await file.read()
-        df_excel1 = pd.read_excel(io.BytesIO(contents), sheet_name='Übersicht BEE Portfolio', dtype={'malo': str})
-        df_excel2 = pd.read_excel(io.BytesIO(contents), sheet_name='Koordinaten (2)')
+        df_excel = pd.read_excel(io.BytesIO(contents), dtype={'malo': str})
 
-        df_excel1.columns = df_excel1.columns.str.strip()
-        df_excel2.columns = df_excel2.columns.str.strip()
-        df_excel1['Gesellschaft'] = df_excel1['Gesellschaft'].astype(str).str.strip()
-        df_excel2['Gesellschaft'] = df_excel2['Gesellschaft'].astype(str).str.strip()
-
-        df_excel = df_excel1.merge(df_excel2[['Gesellschaft', 'unit_mastr_id']], on='Gesellschaft', how='left')
-        df_excel.dropna(subset=["malo"], axis=0, inplace=True)
+        df_excel.columns = df_excel.columns.str.strip()
+        df_excel['malo'] = df_excel['malo'].astype(str).str.strip()
+        df_excel['Marktstammdatenregister-ID'] = df_excel['Marktstammdatenregister-ID'].astype(str).str.strip()
+        df_excel.dropna(subset=("malo"),axis=0, inplace=True)
 
         df = df_excel
         df['malo'] = df['malo'].astype(str).str.strip()
