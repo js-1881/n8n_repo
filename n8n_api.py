@@ -460,7 +460,7 @@ async def process_file(file: UploadFile = File(...)):
         columns_to_keep = ["id"] + target_years + ["avg_enervis"]
         df_enervis_pivot_filter = df_enervis_pivot[columns_to_keep]
 
-        columnskeep = ["Projekt", "Gesellschaft", "tech", "malo", "unit_mastr_id", "Nennleistung [MW]"]
+        columnskeep = ["Projekt", "tech", "malo", "unit_mastr_id", "Gesamtleistung [kW]"]
 
         df_excel_agg = df_final[columnskeep]
         
@@ -475,9 +475,9 @@ async def process_file(file: UploadFile = File(...)):
         merge_a1 = merge_a1.groupby(['malo'], dropna=False).agg({
                 'unit_mastr_id': 'first',
                 'Projekt': 'first', 
-                'Gesellschaft': 'first', 
+                #'Gesellschaft': 'first', 
                 'tech': 'first',
-                'Nennleistung [MW]': 'first',
+                'Gesamtleistung [kW]': 'first',
                 'weighted_2021_eur_mwh_blindleister': 'min',
                 'weighted_2023_eur_mwh_blindleister': 'min',
                 'weighted_2024_eur_mwh_blindleister': 'min',
