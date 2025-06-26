@@ -303,18 +303,24 @@ async def process_file(file: UploadFile = File(...)):
                 name = name.replace(word, '')
             return name.strip()
 
+        df_blind_fetch = df_blind_fetch.dropna(subset=['turbine_model', 'hub_height_m'])
         df_blind_fetch['turbine_model_clean'] = df_blind_fetch['turbine_model'].apply(clean_turbine)
-        df_blind_fetch['add_turbine'] = df_blind_fetch['manufacturer']
+        df_blind_fetch['add_turbine'] = df_blind_fetch['turbine_model']
 
         df_blind_fetch.loc[
-            df_blind_fetch['manufacturer'].isin(['Vestas Deutschland GmbH', 'Senvion Deutschland GmbH', 'ENERCON GmbH']),
+            df_blind_fetch['manufacturer'].isin(['Vestas Deutschland GmbH', 'Senvion Deutschland GmbH', 'ENERCON GmbH', 'VENSYS Energy AG', 'Enron Wind GmbH']),
             'add_turbine'
-        ] = df_blind_fetch['turbine_model_clean'].str.strip() + ' ' + df_blind_fetch['net_power_mw'].round(3).astype(str) + 'MW'
-
+        ] = df_blind_fetch['turbine_model_clean'].astype(str).str.strip() + ' ' + df_blind_fetch['net_power_mw'].round(3).astype(str) + 'MW'
+        
         df_blind_fetch.loc[
-            df_blind_fetch['manufacturer'] == 'Nordex Energy GmbH',
+            df_blind_fetch['manufacturer'].isin(['Nordex Energy GmbH', 'REpower Systems SE', 'Nordex Germany GmbH', "eno energy GmbH"]),
             'add_turbine'
-        ] = df_blind_fetch['turbine_model_clean'].str.strip() + ' ' + df_blind_fetch['net_power_kw'].astype(str)
+        ] = df_blind_fetch['turbine_model_clean'].astype(str).str.strip() + ' ' + df_blind_fetch['net_power_kw'].astype(str)
+        
+        df_blind_fetch.loc[
+            df_blind_fetch['manufacturer'].isin(['REpower Systems SE']),
+            'add_turbine'
+        ] = df_blind_fetch['turbine_model_clean'].astype(str).str.strip() + ' ' + df_blind_fetch['hub_height_m'].astype(str)
 
         print("📦📦 reading excel")
 
@@ -326,10 +332,65 @@ async def process_file(file: UploadFile = File(...)):
         hardcoded_map = {
             "V90 MK8 Gridstreamer": "V-90 2.0MW Gridstreamer",
             "V126-3.45MW": "V-126 3.45MW",
-            "V-90": "V-90 2.0MW Gridstreamer",
-            "V-112 2.0MW": "V-112 3.3MW",
-            "V136-3.6MW": "V-136 3.6MW",
-            "V112-3,45": "V-112 3.45MW"
+            "V-90" : "V-90 2.0MW Gridstreamer",
+            "V-112 2.0MW" : "V-112 3.3MW",
+            "V136-3.6MW" : "V-136 3.6MW",
+            "V112-3,45" : "V-112 3.45MW",
+            "V162-5.6 MW" : "V-162 5.6MW",
+            "V162-6.2 MW" : "V-162 6.2MW",
+            "Vestas V162" : "N-163/6800",
+            "V 150-4.2 MW" : "V-150 4.2MW (PO)",
+            "Vestas V112-3.3 MW MK2A" : "V-112 3.3MW",
+        
+            "Nordex N149-5.7 MW" : "N-149/5700",
+            "Nordex N149-5.X" : "N-149/5700",
+            "N149-5.7 MW" : "N-149/5700",
+            "N175-6.8 MW" : "N-175/6800",
+            "N163-6.8 MW" : "N-163/6800",
+            "N163-5.7 MW" : "N-163/5700",
+            "N163-7.0 MW" : "N-163/7000",
+            "N149-5.7 MW" : "N-149/5700",
+            "Nordex N149-5.7 MW" : "N-149/5700",
+            "Nordex N149-5.7 MW" : "N-149/5700",
+            "N163/6.X 6800" : "N-163/6800",
+            "Nordex N133-4.8" : "N-133/4800",
+            "Nordex N133/4.8 4800" : "N-133/4800",
+        
+            "Nordex N117/3600" : "N-117/3600",
+            "N117/3.6" : "N-117/3600",
+            
+            "N-117 3150" : "N-117/3000",
+            "N133 / 4.8 TS110" : "N-133/4800",
+            "N149/5.7" : "N-149/5700",
+        
+            "Vensys 77" : "77/1500",
+            "Senvion 3.4M104" : "3.4M104",
+            "Senvion 3.2M" : "3.2M114",
+            "Senvion 3.0M114": "3.2M114",
+            "3.2M123" : "3.2M122",
+            
+            "E-141 EP4 4,2 MW" : "E-141 EP4 4.2MW",
+            "E-70 E4-2/CS 82 a 2.3MW" : "E-70 E4 2.3MW",
+            "E115 EP3  E3 4.2MW" : "E-115 EP3 4.2MW",
+            "E115 EP3  E3" : "E-115 EP3 4.2MW",
+            "E115 EP3 E3" : "E-115 EP3 4.2MW",
+            "E-53/S/72/3K/02" : "E-53 0.8MW",
+            "E82 E 2 2.3MW" :"E-82 E2 2.3MW",
+        
+            "E-70 E4 2300" : "E-70 E4 2.3MW",
+            "E 82 Serrations" : "E-82 E2 2.3MW",
+        
+            "MM-92" : "MM 92 2.05MW",
+            "MM92 2.05MW" : "MM 92 2.05MW",
+            "MM-100" : "MM 100 2.0MW",
+            "MM-82" : "MM 82 2.05MW",
+        
+            "MD-77" : "MD 77 1.5MW",
+        
+            "SWT-3.2" : "SWT-3.2-113",
+           
+            "GE-5.5" : "GE 5.5-158",
+            "GE-3.6" : "GE 3.6-137"
         }
 
         def match_add_turbine(row, choices, threshold=85):
