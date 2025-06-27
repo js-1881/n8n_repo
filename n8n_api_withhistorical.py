@@ -710,6 +710,8 @@ async def process_file(file: UploadFile = File(...)):
                                      "avg_enervis"]]
 
         print(df_pricing)
+        import gc
+        gc.collect()
 
         
         end = time.time()
@@ -734,6 +736,7 @@ async def process_file(file: UploadFile = File(...)):
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={"Content-Disposition": f"attachment; filename={processed_filename}"}
         )
+        
         
         
     except Exception as e:
