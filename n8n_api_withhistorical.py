@@ -552,10 +552,16 @@ async def process_file(file: UploadFile = File(...)):
         rmv_response.raise_for_status()
         df_rmv = pd.read_csv(io.BytesIO(rmv_response.content))
 
-        df_source_temp = pd.read_excel(io.BytesIO(contents), sheet_name= 'historical_source', dtype={'malo': str})
+        df_source_temp = pd.read_excel(io.BytesIO(contents), sheet_name= 'historical_source', 
+                                       usecols=['malo', 'time_berlin', 'power_kwh'],
+                                       dtype={'malo': str},
+                                       parse_dates=['time_berlin'],
+                                       engine='openpyxl')
+        del contents
 
+        df_source_temp['power_kwh'] = pd.to_numeric(df_source_temp['power_kwh'], downcast='float')
         df_source_temp['malo'] = df_source_temp['malo'].astype(str).str.strip()
-        df_source_temp['time_berlin'] = pd.to_datetime(df_source_temp['time_berlin'])
+        #df_source_temp['time_berlin'] = pd.to_datetime(df_source_temp['time_berlin'])
 
         df_dayahead['time'] = pd.to_datetime(df_dayahead['time'])
         df_dayahead['time'] = df_dayahead['time'].dt.tz_localize('UTC').dt.tz_convert('Europe/Berlin')
