@@ -546,7 +546,13 @@ async def process_file(file: UploadFile = File(...)):
         # FETCH RMV AND DA PRICE from GitHub
         DA_response = requests.get(DA_PRICE_URL)
         DA_response.raise_for_status()
-        df_dayahead = pd.read_excel(io.BytesIO(DA_response.content))
+        df_dayahead = pd.read_excel(
+            io.BytesIO(DA_response.content),
+            usecols=['time', 'dayaheadprice'],     
+            parse_dates=['time'],                  
+            dtype={'dayaheadprice': 'float32'},
+            engine='openpyxl',
+        )
 
         rmv_response = requests.get(RMV_PRICE_URL)
         rmv_response.raise_for_status()
@@ -556,14 +562,15 @@ async def process_file(file: UploadFile = File(...)):
                                        usecols=['malo', 'time_berlin', 'power_kwh'],
                                        dtype={'malo': str},
                                        parse_dates=['time_berlin'],
-                                       engine='openpyxl')
+                                       engine='openpyxl',
+                                      )
         del contents
 
         df_source_temp['power_kwh'] = pd.to_numeric(df_source_temp['power_kwh'], downcast='float')
         df_source_temp['malo'] = df_source_temp['malo'].astype(str).str.strip()
         #df_source_temp['time_berlin'] = pd.to_datetime(df_source_temp['time_berlin'])
 
-        df_dayahead['time'] = pd.to_datetime(df_dayahead['time'])
+        #df_dayahead['time'] = pd.to_datetime(df_dayahead['time'])
         df_dayahead['time'] = df_dayahead['time'].dt.tz_localize('UTC').dt.tz_convert('Europe/Berlin')
         df_dayahead['naive_time'] = df_dayahead['time'].dt.tz_localize(None)
         df_dayahead_avg = df_dayahead.groupby('naive_time', as_index=False)['dayaheadprice'].mean()
