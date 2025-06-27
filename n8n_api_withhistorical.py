@@ -537,7 +537,7 @@ async def process_file(file: UploadFile = File(...)):
 
         rmv_response = requests.get(RMV_PRICE_URL)
         rmv_response.raise_for_status()
-        df_rmv = pd.read_csv(io.BytesIO(rmv_response.content, chunksize=50000))
+        df_rmv = pd.read_csv(io.BytesIO(rmv_response.content))
 
         df_source_temp = pd.read_excel(io.BytesIO(contents), sheet_name= 'historical_source', dtype={'malo': str})
 
