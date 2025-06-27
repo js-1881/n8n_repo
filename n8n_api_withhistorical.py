@@ -574,7 +574,7 @@ async def process_file(file: UploadFile = File(...)):
         )
 
         df_source_temp = pd.read_excel(io.BytesIO(contents), sheet_name= 'historical_source', 
-                                       usecols=['malo', 'time_berlin', 'power_kwh'],
+                                       usecols=['malo', 'time_berlin', 'power_mw'],
                                        dtype={'malo': str},
                                        parse_dates=['time_berlin'],
                                        engine='openpyxl',
@@ -582,7 +582,7 @@ async def process_file(file: UploadFile = File(...)):
         del contents
         gc.collect()
 
-        df_source_temp['power_kwh'] = pd.to_numeric(df_source_temp['power_kwh'], downcast='float')
+        df_source_temp['power_mw'] = pd.to_numeric(df_source_temp['power_mw'], downcast='float')
         df_source_temp['malo'] = df_source_temp['malo'].astype(str).str.strip()
         #df_source_temp['time_berlin'] = pd.to_datetime(df_source_temp['time_berlin'])
 
@@ -651,7 +651,8 @@ async def process_file(file: UploadFile = File(...)):
         del df_source
         gc.collect()
 
-        df_source_avg = grouped["power_kwh"].apply(custom_power_mwh).reset_index()
+        df_source_avg = grouped["power_mw"].apply(custom_power_mwh).reset_index()
+        df_source_avg["power_kwh"] = df_source_avg["power_mw"] * 1000 / 4
 
         merged_df = pd.merge(df_source_avg, df_excel, on='malo', how='left')
 
