@@ -121,6 +121,8 @@ def download_result_files(job_info, token):
 
 @app.post("/process")
 async def process_file(file: UploadFile = File(...)):
+    print("🔔 /process handler invoked")
+    print("🔔🔔🔔")
     try:
         # Step 1: Load user-uploaded Excel
         contents = await file.read()
