@@ -580,6 +580,7 @@ async def process_file(file: UploadFile = File(...)):
                                        engine='openpyxl',
                                       )
         del contents
+        gc.collect()
 
         df_source_temp['power_kwh'] = pd.to_numeric(df_source_temp['power_kwh'], downcast='float')
         df_source_temp['malo'] = df_source_temp['malo'].astype(str).str.strip()
@@ -589,10 +590,13 @@ async def process_file(file: UploadFile = File(...)):
         df_dayahead['time'] = df_dayahead['time'].dt.tz_localize('UTC').dt.tz_convert('Europe/Berlin')
         df_dayahead['naive_time'] = df_dayahead['time'].dt.tz_localize(None)
         df_dayahead_avg = df_dayahead.groupby('naive_time', as_index=False)['dayaheadprice'].mean()
-        df_dayahead_avg = df_dayahead_avg.rename(columns={'naive_time': 'time_berlin'})
 
         del df_dayahead
         gc.collect()
+        
+        df_dayahead_avg = df_dayahead_avg.rename(columns={'naive_time': 'time_berlin'})
+
+        
 
 
         print("🥕")
