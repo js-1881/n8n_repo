@@ -8,6 +8,7 @@ import numpy as np
 import os
 import re
 import time
+import gc
 start = time.time()
 
 app = FastAPI()
@@ -19,7 +20,7 @@ async def root():
     }
 
 EXCEL_FILE_URL = "https://github.com/js-1881/n8n_repo/raw/main/turbine_types_id_enervis.xlsx"
-DA_PRICE_URL = "https://github.com/js-1881/n8n_repo/raw/main/DA_price_updated.xlsx"
+DA_PRICE_URL = "https://github.com/js-1881/n8n_repo/raw/main/DA_price_updated_2021.xlsx"
 RMV_PRICE_URL = "https://github.com/js-1881/n8n_repo/raw/main/rmv_price.csv"
 
 
@@ -227,18 +228,20 @@ async def process_file(file: UploadFile = File(...)):
             "monthly_market_price_eur_mwh",
             "monthly_reference_market_price_eur_mwh",
         ]
-        df_flat = df_flat[cols]
-        df_all_flat = df_flat.copy()
+        #df_flat = df_flat[cols]
+        #df_all_flat = df_flat.copy()
+        del records
+        gc.collect()
         
-        df_all_flat['weighted_per_mwh_monthly'] = (
-            ((df_all_flat['monthly_generated_energy_mwh'] * df_all_flat['monthly_market_price_eur_mwh']) -
-             (df_all_flat['monthly_generated_energy_mwh'] * df_all_flat['monthly_reference_market_price_eur_mwh'])) /
-            df_all_flat['monthly_generated_energy_mwh'] *
-            df_all_flat['monthly_energy_contribution_percent'] / 100 * 12
+        df_flat ['weighted_per_mwh_monthly'] = (
+            ((df_flat ['monthly_generated_energy_mwh'] * df_flat ['monthly_market_price_eur_mwh']) -
+             (df_flat ['monthly_generated_energy_mwh'] * df_flat ['monthly_reference_market_price_eur_mwh'])) /
+            df_flat ['monthly_generated_energy_mwh'] *
+            df_flat ['monthly_energy_contribution_percent'] / 100 * 12
         )
 
         print("🥨🥨🥨")
-        year_agg_per_unit = df_all_flat.groupby(['year', 'unit_mastr_id'])['weighted_per_mwh_monthly'].mean().reset_index(name='weighted_year_agg_per_unit_eur_mwh')
+        year_agg_per_unit = df_flat .groupby(['year', 'unit_mastr_id'])['weighted_per_mwh_monthly'].mean().reset_index(name='weighted_year_agg_per_unit_eur_mwh')
         df_year_agg_per_unit = pd.DataFrame(year_agg_per_unit)
 
         weighted_years_pivot = df_year_agg_per_unit.pivot(
@@ -291,6 +294,8 @@ async def process_file(file: UploadFile = File(...)):
             return {"error": "No valid records returned from external API."}
 
         del all_records
+        gc.collect()
+        
         df_blind_fetch = df_blind_fetch[["unit_mastr_id","windpark","manufacturer","turbine_model","hub_height_m","energy_source","net_power_kw","latitude","longitude"]]
 
         
@@ -427,12 +432,14 @@ async def process_file(file: UploadFile = File(...)):
         ]]
 
         del df_blind_fetch
+        gc.collect()
 
         print("🥕🥕🥕🥕🥕🥕🥕🥕") 
 
         df_final = pd.merge(df_excel, df_fuzzy, on="unit_mastr_id", how="left")
 
         del df_fuzzy
+        gc.collect()
         
         df_final['hub_height_m_numeric'] = pd.to_numeric(df_final['hub_height_m'], errors='coerce')
 
@@ -461,6 +468,7 @@ async def process_file(file: UploadFile = File(...)):
         ].copy()
 
         del all_df
+        gc.collect()
         
         # Step 2: Pivot to wide format
         df_enervis_pivot = df_filtered.pivot(
@@ -470,6 +478,7 @@ async def process_file(file: UploadFile = File(...)):
         ).rename_axis(None, axis=1).reset_index()
 
         del df_filtered
+        gc.collect()
         
         # Step 3: Ensure all year columns are present
         for year in target_years:
@@ -482,12 +491,14 @@ async def process_file(file: UploadFile = File(...)):
         df_enervis_pivot_filter = df_enervis_pivot[columns_to_keep]
 
         del df_enervis_pivot
+        gc.collect()
 
         columnskeep = ["Projekt", "tech", "malo", "unit_mastr_id", "Gesamtleistung [kW]"]
 
         df_excel_agg = df_final[columnskeep]
 
         del df_final
+        gc.collect()
         
         
         merge_a1 = pd.merge(
@@ -498,6 +509,7 @@ async def process_file(file: UploadFile = File(...)):
         )
 
         del df_excel_agg, final_weighted_blindleister
+        gc.collect()
         
         merge_a1 = merge_a1.groupby(['malo'], dropna=False).agg({
                 'unit_mastr_id': 'first',
@@ -522,6 +534,7 @@ async def process_file(file: UploadFile = File(...)):
         )
 
         del merge_a1, df_enervis_pivot_filter
+        gc.collect()
 
         merge_a2 = merge_a2.drop(columns=['id'])
 
@@ -551,6 +564,7 @@ async def process_file(file: UploadFile = File(...)):
         df_dayahead_avg = df_dayahead_avg.rename(columns={'naive_time': 'time_berlin'})
 
         del df_dayahead
+        gc.collect()
 
 
         print("🥕")
@@ -603,12 +617,14 @@ async def process_file(file: UploadFile = File(...)):
                 return group.sum()
 
         del df_source
+        gc.collect()
 
         df_source_avg = grouped["power_kwh"].apply(custom_power_mwh).reset_index()
 
         merged_df = pd.merge(df_source_avg, df_excel, on='malo', how='left')
 
         del df_source_avg, df_excel
+        gc.collect()
    
         for df, col in [(merged_df, 'time_berlin'), (df_dayahead_avg, 'time_berlin')]:
             df['year'] = df[col].dt.year
@@ -646,6 +662,7 @@ async def process_file(file: UploadFile = File(...)):
         dayaheadprice_production_merge = dayaheadprice_production_merge.drop(columns=['time_berlin_price'])
 
         del merged_df, df_dayahead_avg
+        gc.collect()
 
         dayaheadprice_production_merge['tech'] = dayaheadprice_production_merge['tech'].astype(str).str.strip().str.upper()
         df_rmv['tech'] = df_rmv['tech'].astype(str).str.strip().str.upper()
@@ -653,6 +670,7 @@ async def process_file(file: UploadFile = File(...)):
         merge_prod_rmv_dayahead['time_berlin'] = merge_prod_rmv_dayahead['time_berlin'].dt.tz_localize(None)
 
         del dayaheadprice_production_merge, df_rmv
+        gc.collect()
 
         merge_prod_rmv_dayahead.rename(columns={'power_kwh':'production_kwh'}, inplace=True)
 
@@ -698,6 +716,7 @@ async def process_file(file: UploadFile = File(...)):
         )
 
         del merge_a2, year_agg
+        gc.collect()
 
         df_pricing = merge_a3.loc[:, ["Projekt", "malo", "unit_mastr_id", "Gesamtleistung [kW]", "tech", "available_month_after_filter", "prod_weighted_eur_mwh",
                                      "weighted_2021_eur_mwh_blindleister", 
@@ -710,8 +729,9 @@ async def process_file(file: UploadFile = File(...)):
                                      "avg_enervis"]]
 
         print(df_pricing)
-        import gc
-        gc.collect()
+        
+
+        
 
         
         end = time.time()
