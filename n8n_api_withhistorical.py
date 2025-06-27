@@ -131,7 +131,7 @@ async def process_file(file: UploadFile = File(...)):
         df_excel.columns = df_excel.columns.str.strip()
         df_excel['malo'] = df_excel['malo'].astype(str).str.strip()
         df_excel['Marktstammdatenregister-ID'] = df_excel['Marktstammdatenregister-ID'].astype(str).str.strip()
-        df_excel.dropna(subset=("malo"),axis=0, inplace=True)
+        df_excel.dropna(subset=["malo"], axis=0, inplace=True)
 
         
         df_excel = df_excel[['Projekt','malo', 'Marktstammdatenregister-ID','tech','Gesamtleistung [kW]']]
