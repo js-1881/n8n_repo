@@ -501,7 +501,7 @@ async def process_file(file: UploadFile = File(...)):
         merge_a2 = merge_a2.drop(columns=['id'])
 
         print("✅ Excel file generated and response returned.")
-        print("🥕🥕") 
+        print("🥕") 
 
 
         ####### STARTING THE HISTORICAL DATA CALCULATION #########
@@ -526,7 +526,7 @@ async def process_file(file: UploadFile = File(...)):
         df_dayahead_avg = df_dayahead_avg.rename(columns={'naive_time': 'time_berlin'})
 
 
-
+        print("🥕")
 
         # Initialize lists to store results
         filtered_data = []
@@ -605,6 +605,11 @@ async def process_file(file: UploadFile = File(...)):
         # Step 5: Merge the complete months back into the original data
         merged_df = merged_df.merge(complete_months[['malo', 'year', 'month']], on=['malo', 'year', 'month'], how='inner')
 
+        print("🥕🥕") 
+        print("🥨🥨🥨🥨🥨🥨🥨🥨🥨🥨🥨🥨🥨🥨🥨🥨🥨🥨") 
+
+
+
 
         dayaheadprice_production_merge = pd.merge(merged_df, df_dayahead_avg, on=['year', 'month', 'day', 'hour'], how='inner', suffixes=('', '_price'))  
         dayaheadprice_production_merge = dayaheadprice_production_merge.drop(columns=['time_berlin_price'])
@@ -675,7 +680,7 @@ async def process_file(file: UploadFile = File(...)):
         # Export to Excel and return as response
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            merge_a3.to_excel(writer,  sheet_name="final_pricing",   index=False)
+            df_pricing.to_excel(writer,  sheet_name="final_pricing",   index=False)
             merge_a2.to_excel(writer,  sheet_name="Processed Data",   index=False)
             df_enervis_pivot_filter.to_excel(writer, sheet_name="Historical Results", index=False)
             final_weighted_blindleister.to_excel(writer, sheet_name="final_weighted_blindleister", index=False)
