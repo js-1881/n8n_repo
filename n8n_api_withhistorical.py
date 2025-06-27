@@ -127,7 +127,15 @@ async def process_file(file: UploadFile = File(...)):
     try:
         # Step 1: Load user-uploaded Excel
         contents = await file.read()
-        df_excel = pd.read_excel(io.BytesIO(contents), sheet_name= 'stammdaten', dtype={'malo': str})
+        df_excel = pd.read_excel(
+            io.BytesIO(contents),
+            sheet_name='stammdaten',
+            usecols=['Projekt','malo','Marktstammdatenregister-ID','tech','Gesamtleistung [kW]'],
+            dtype={
+              'malo': 'string', 
+              'Marktstammdatenregister-ID': 'string',
+            },
+        ).rename(columns={'Marktstammdatenregister-ID':'unit_mastr_id'})
 
         df_excel.columns = df_excel.columns.str.strip()
         df_excel['malo'] = df_excel['malo'].astype(str).str.strip()
@@ -556,7 +564,14 @@ async def process_file(file: UploadFile = File(...)):
 
         rmv_response = requests.get(RMV_PRICE_URL)
         rmv_response.raise_for_status()
-        df_rmv = pd.read_csv(io.BytesIO(rmv_response.content))
+        df_rmv = pd.read_csv(
+            io.BytesIO(rmv_response.content),
+            usecols=['tech','year','monthly_reference_market_price_eur_mwh'],
+            dtype={
+              'year':'int16',
+              'monthly_reference_market_price_eur_mwh':'float32'
+            }
+        )
 
         df_source_temp = pd.read_excel(io.BytesIO(contents), sheet_name= 'historical_source', 
                                        usecols=['malo', 'time_berlin', 'power_kwh'],
