@@ -532,7 +532,7 @@ async def process_file(file: UploadFile = File(...)):
         filtered_data = []
 
         # Iterate over each malo group
-        for malo, group in df.groupby('malo'):
+        for malo, group in df_source_temp.groupby('malo'):
             # Get the first and last time for each 'malo'
             first_date = group['time_berlin'].min()
             last_date = group['time_berlin'].max()
