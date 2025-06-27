@@ -290,6 +290,11 @@ async def process_file(file: UploadFile = File(...)):
         if df_blind_fetch.empty:
             return {"error": "No valid records returned from external API."}
 
+        del all_records
+        df_blind_fetch = df_blind_fetch[["unit_mastr_id","windpark","manufacturer","turbine_model","hub_height","energy_source","net_power_kw","latitude","longitude"]]
+
+        
+
         # Step 5: Process data
         df_blind_fetch = df_blind_fetch[df_blind_fetch["energy_source"] == 'wind']
         df_blind_fetch['net_power_mw'] = df_blind_fetch['net_power_kw'] / 1000
@@ -421,9 +426,14 @@ async def process_file(file: UploadFile = File(...)):
             "unit_mastr_id", "latitude", "longitude", "Matched_Turbine_ID", "hub_height_m"
         ]]
 
+        del df_blind_fetch
+
         print("🥕🥕🥕🥕🥕🥕🥕🥕") 
 
         df_final = pd.merge(df_excel, df_fuzzy, on="unit_mastr_id", how="left")
+
+        del df_excel, df_fuzzy
+        
         df_final['hub_height_m_numeric'] = pd.to_numeric(df_final['hub_height_m'], errors='coerce')
 
         df_final['hub_height_m'] = (df_final['hub_height_m_numeric'].apply(lambda x: int(x) if pd.notna(x) else ""))
@@ -449,6 +459,8 @@ async def process_file(file: UploadFile = File(...)):
         df_filtered = all_df.loc[
             all_df.groupby(["id", "Year"])["Marktwertdifferenz"].idxmin()
         ].copy()
+
+        del all_df
         
         # Step 2: Pivot to wide format
         df_enervis_pivot = df_filtered.pivot(
@@ -456,6 +468,8 @@ async def process_file(file: UploadFile = File(...)):
             columns="Year",
             values="Marktwertdifferenz"
         ).rename_axis(None, axis=1).reset_index()
+
+        del df_filtered
         
         # Step 3: Ensure all year columns are present
         for year in target_years:
@@ -467,9 +481,13 @@ async def process_file(file: UploadFile = File(...)):
         columns_to_keep = ["id"] + target_years + ["avg_enervis"]
         df_enervis_pivot_filter = df_enervis_pivot[columns_to_keep]
 
+        del df_enervis_pivot
+
         columnskeep = ["Projekt", "tech", "malo", "unit_mastr_id", "Gesamtleistung [kW]"]
 
         df_excel_agg = df_final[columnskeep]
+
+        del df_final
         
         
         merge_a1 = pd.merge(
@@ -478,6 +496,8 @@ async def process_file(file: UploadFile = File(...)):
             on = 'unit_mastr_id',
             how='left'
         )
+
+        del df_excel_agg, final_weighted_blindleister
         
         merge_a1 = merge_a1.groupby(['malo'], dropna=False).agg({
                 'unit_mastr_id': 'first',
@@ -501,6 +521,8 @@ async def process_file(file: UploadFile = File(...)):
             how='left'
         )
 
+        del merge_a1, df_enervis_pivot_filter
+
         merge_a2 = merge_a2.drop(columns=['id'])
 
         print("✅ Excel file generated and response returned.")
@@ -515,7 +537,7 @@ async def process_file(file: UploadFile = File(...)):
 
         rmv_response = requests.get(RMV_PRICE_URL)
         rmv_response.raise_for_status()
-        df_rmv = pd.read_csv(io.BytesIO(rmv_response.content))
+        df_rmv = pd.read_csv(io.BytesIO(rmv_response.content, chunksize=50000))
 
         df_source_temp = pd.read_excel(io.BytesIO(contents), sheet_name= 'historical_source', dtype={'malo': str})
 
@@ -527,6 +549,8 @@ async def process_file(file: UploadFile = File(...)):
         df_dayahead['naive_time'] = df_dayahead['time'].dt.tz_localize(None)
         df_dayahead_avg = df_dayahead.groupby('naive_time', as_index=False)['dayaheadprice'].mean()
         df_dayahead_avg = df_dayahead_avg.rename(columns={'naive_time': 'time_berlin'})
+
+        del df_dayahead
 
 
         print("🥕")
@@ -578,9 +602,13 @@ async def process_file(file: UploadFile = File(...)):
             else:
                 return group.sum()
 
+        del df_source
+
         df_source_avg = grouped["power_kwh"].apply(custom_power_mwh).reset_index()
 
         merged_df = pd.merge(df_source_avg, df_excel, on='malo', how='left')
+
+        del df_source_avg, df_excel
    
         for df, col in [(merged_df, 'time_berlin'), (df_dayahead_avg, 'time_berlin')]:
             df['year'] = df[col].dt.year
@@ -617,10 +645,14 @@ async def process_file(file: UploadFile = File(...)):
         dayaheadprice_production_merge = pd.merge(merged_df, df_dayahead_avg, on=['year', 'month', 'day', 'hour'], how='inner', suffixes=('', '_price'))  
         dayaheadprice_production_merge = dayaheadprice_production_merge.drop(columns=['time_berlin_price'])
 
+        del merged_df, df_dayahead_avg
+
         dayaheadprice_production_merge['tech'] = dayaheadprice_production_merge['tech'].astype(str).str.strip().str.upper()
         df_rmv['tech'] = df_rmv['tech'].astype(str).str.strip().str.upper()
         merge_prod_rmv_dayahead = pd.merge(dayaheadprice_production_merge, df_rmv, on=['tech','year', 'month'], how='left')
         merge_prod_rmv_dayahead['time_berlin'] = merge_prod_rmv_dayahead['time_berlin'].dt.tz_localize(None)
+
+        del dayaheadprice_production_merge, df_rmv
 
         merge_prod_rmv_dayahead.rename(columns={'power_kwh':'production_kwh'}, inplace=True)
 
@@ -665,6 +697,8 @@ async def process_file(file: UploadFile = File(...)):
             how='left'
         )
 
+        del merge_a2, year_agg
+
         df_pricing = merge_a3.loc[:, ["Projekt", "malo", "unit_mastr_id", "Gesamtleistung [kW]", "tech", "available_month_after_filter", "prod_weighted_eur_mwh",
                                      "weighted_2021_eur_mwh_blindleister", 
                                      "weighted_2023_eur_mwh_blindleister", 
@@ -684,10 +718,10 @@ async def process_file(file: UploadFile = File(...)):
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             df_pricing.to_excel(writer,  sheet_name="final_pricing",   index=False)
-            merge_a2.to_excel(writer,  sheet_name="Processed Data",   index=False)
-            df_enervis_pivot_filter.to_excel(writer, sheet_name="Historical Results", index=False)
-            final_weighted_blindleister.to_excel(writer, sheet_name="final_weighted_blindleister", index=False)
-            df_final.to_excel(writer, sheet_name="df_final", index=False)
+            #merge_a2.to_excel(writer,  sheet_name="Processed Data",   index=False)
+            #df_enervis_pivot_filter.to_excel(writer, sheet_name="Historical Results", index=False)
+            #final_weighted_blindleister.to_excel(writer, sheet_name="final_weighted_blindleister", index=False)
+            #df_final.to_excel(writer, sheet_name="df_final", index=False)
         output.seek(0)
 
         print(f"🕒 Finished in {time.time()-start:.2f}s")
