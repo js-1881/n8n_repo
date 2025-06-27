@@ -432,7 +432,7 @@ async def process_file(file: UploadFile = File(...)):
 
         df_final = pd.merge(df_excel, df_fuzzy, on="unit_mastr_id", how="left")
 
-        del df_excel, df_fuzzy
+        del df_fuzzy
         
         df_final['hub_height_m_numeric'] = pd.to_numeric(df_final['hub_height_m'], errors='coerce')
 
