@@ -291,7 +291,7 @@ async def process_file(file: UploadFile = File(...)):
             return {"error": "No valid records returned from external API."}
 
         del all_records
-        df_blind_fetch = df_blind_fetch[["unit_mastr_id","windpark","manufacturer","turbine_model","hub_height","energy_source","net_power_kw","latitude","longitude"]]
+        df_blind_fetch = df_blind_fetch[["unit_mastr_id","windpark","manufacturer","turbine_model","hub_height_m","energy_source","net_power_kw","latitude","longitude"]]
 
         
 
