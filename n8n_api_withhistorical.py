@@ -584,9 +584,9 @@ async def process_file(file: UploadFile = File(...)):
 
         df_source_temp['power_mw'] = pd.to_numeric(df_source_temp['power_mw'], downcast='float')
         df_source_temp['malo'] = df_source_temp['malo'].astype(str).str.strip()
-        #df_source_temp['time_berlin'] = pd.to_datetime(df_source_temp['time_berlin'])
+        df_source_temp['time_berlin'] = pd.to_datetime(df_source_temp['time_berlin'])
 
-        #df_dayahead['time'] = pd.to_datetime(df_dayahead['time'])
+        df_dayahead['time'] = pd.to_datetime(df_dayahead['time'])
         df_dayahead['time'] = df_dayahead['time'].dt.tz_localize('UTC').dt.tz_convert('Europe/Berlin')
         df_dayahead['naive_time'] = df_dayahead['time'].dt.tz_localize(None)
         df_dayahead_avg = df_dayahead.groupby('naive_time', as_index=False)['dayaheadprice'].mean()
