@@ -557,7 +557,7 @@ async def process_file(file: UploadFile = File(...)):
         df_dayahead = pd.read_excel(
             io.BytesIO(DA_response.content),
             usecols=['time', 'dayaheadprice'],     
-            parse_dates=['time'],                  
+           ## parse_dates=['time'],                  
             dtype={'dayaheadprice': 'float32'},
             engine='openpyxl',
         )
@@ -576,7 +576,7 @@ async def process_file(file: UploadFile = File(...)):
         df_source_temp = pd.read_excel(io.BytesIO(contents), sheet_name= 'historical_source', 
                                        usecols=['malo', 'time_berlin', 'power_mw'],
                                        dtype={'malo': str},
-                                       parse_dates=['time_berlin'],
+                                       #parse_dates=['time_berlin'],
                                        engine='openpyxl',
                                       )
         del contents
