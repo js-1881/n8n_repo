@@ -568,7 +568,7 @@ async def process_file(file: UploadFile = File(...)):
             io.BytesIO(rmv_response.content),
             usecols=['tech','year','monthly_reference_market_price_eur_mwh'],
             dtype={
-              'year':'int16',
+              #'year':'int16',
               'monthly_reference_market_price_eur_mwh':'float32'
             }
         )
