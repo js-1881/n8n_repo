@@ -2,6 +2,7 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import StreamingResponse
 import pandas as pd
 from io import StringIO
+import io
 import requests
 from thefuzz import fuzz, process
 import numpy as np
@@ -795,7 +796,7 @@ async def process_file(file: UploadFile = File(...)):
         # Export to Excel and return as response
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            df_pricing.to_excel(writer,  sheet_name="final_pricing",   index=False)
+            year_agg.to_excel(writer,  sheet_name="final_pricing",   index=False)
             #merge_a2.to_excel(writer,  sheet_name="Processed Data",   index=False)
             #df_enervis_pivot_filter.to_excel(writer, sheet_name="Historical Results", index=False)
             #final_weighted_blindleister.to_excel(writer, sheet_name="final_weighted_blindleister", index=False)
