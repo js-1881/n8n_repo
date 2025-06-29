@@ -1,7 +1,7 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import StreamingResponse
 import pandas as pd
-import io
+from io import StringIO
 import requests
 from thefuzz import fuzz, process
 import numpy as np
@@ -128,26 +128,31 @@ async def process_file(file: UploadFile = File(...)):
         # Step 1: Load user-uploaded Excel
         contents = await file.read()
         df_excel = pd.read_excel(
-            io.BytesIO(contents),
-            sheet_name='stammdaten',
-            usecols=['Projekt','malo','Marktstammdatenregister-ID','tech','Gesamtleistung [kW]'],
-            dtype={
-              'malo': 'string', 
-              'Marktstammdatenregister-ID': 'string',
-            },
-        ).rename(columns={'Marktstammdatenregister-ID':'unit_mastr_id'})
+        #     io.BytesIO(contents),
+        #     sheet_name='stammdaten',
+        #     usecols=['Projekt','malo','Marktstammdatenregister-ID','tech','Gesamtleistung [kW]'],
+        #     dtype={
+        #       'malo': 'string', 
+        #       'Marktstammdatenregister-ID': 'string',
+        #     },
+        # ).rename(columns={'Marktstammdatenregister-ID':'unit_mastr_id'})
 
-        df_excel.columns = df_excel.columns.str.strip()
-        df_excel['malo'] = df_excel['malo'].astype(str).str.strip()
-        df_excel['unit_mastr_id'] = df_excel['unit_mastr_id'].astype(str).str.strip()
-        df_excel.dropna(subset=["malo"], axis=0, inplace=True)
+        # df_excel.columns = df_excel.columns.str.strip()
+        # df_excel['malo'] = df_excel['malo'].astype(str).str.strip()
+        # df_excel['unit_mastr_id'] = df_excel['unit_mastr_id'].astype(str).str.strip()
+        # df_excel.dropna(subset=["malo"], axis=0, inplace=True)
 
         
-        df_excel = df_excel[['Projekt','malo', 'unit_mastr_id','tech','Gesamtleistung [kW]']]
-        #df_excel.rename(columns= {'Marktstammdatenregister-ID': 'unit_mastr_id'}, inplace=True)
+        # df_excel = df_excel[['Projekt','malo', 'unit_mastr_id','tech','Gesamtleistung [kW]']]
+        # #df_excel.rename(columns= {'Marktstammdatenregister-ID': 'unit_mastr_id'}, inplace=True)
 
-        df = df_excel
-        df['malo'] = df['malo'].astype(str).str.strip()
+        # df = df_excel
+        # df['malo'] = df['malo'].astype(str).str.strip()
+
+        
+
+
+        
 
         # # Step 2: Filter for 'SEE' IDs
         # id_list = df['unit_mastr_id'].dropna()
@@ -572,18 +577,32 @@ async def process_file(file: UploadFile = File(...)):
               'monthly_reference_market_price_eur_mwh':'float32'
             }
         )
+        
+        text = contents.decode('utf-8')
+        processed_chunks = []
 
-        df_source_temp = pd.read_excel(io.BytesIO(contents), sheet_name= 'historical_source', 
-                                       usecols=['malo', 'time_berlin', 'power_mw'],
-                                       dtype={'malo': str},
-                                       #parse_dates=['time_berlin'],
-                                       engine='openpyxl',
-                                      )
-        del contents
+        for chunk in pd.read_csv(
+            StringIO(text),
+            usecols=['malo', 'time_berlin', 'power_mw'],
+            dtype={'malo': 'string', 'power_mw':'float32'},
+            parse_dates=['time_berlin'],
+            dayfirst=True,          # interpret DD.MM.YYYY correctly
+            chunksize=50_000,      # read 100k rows at a time
+            engine='python'         # safer for some CSV quirks
+        ):
+            # clean up malo
+            chunk['malo'] = chunk['malo'].str.strip()
+            # now you have a datetime in chunk.time_berlin
+            # you can do whatever per‐chunk filtering/aggregation you need here
+            processed_chunks.append(chunk)
+        
+        # once all chunks are processed, concatenate if needed
+        df_source_temp = pd.concat(processed_chunks, ignore_index=True)
+        del processed_chunks  # free memory
         gc.collect()
 
-        df_source_temp['power_mw'] = pd.to_numeric(df_source_temp['power_mw'], downcast='float')
-        df_source_temp['malo'] = df_source_temp['malo'].astype(str).str.strip()
+        #df_source_temp['power_mw'] = pd.to_numeric(df_source_temp['power_mw'], downcast='float')
+        #df_source_temp['malo'] = df_source_temp['malo'].astype(str).str.strip()
         #df_source_temp['time_berlin'] = pd.to_datetime(df_source_temp['time_berlin'])
 
         df_source_temp['time_berlin'] = pd.to_datetime(
