@@ -127,7 +127,7 @@ async def process_file(file: UploadFile = File(...)):
     try:
         # Step 1: Load user-uploaded Excel
         contents = await file.read()
-        df_excel = pd.read_excel(
+        #df_excel = pd.read_excel(
         #     io.BytesIO(contents),
         #     sheet_name='stammdaten',
         #     usecols=['Projekt','malo','Marktstammdatenregister-ID','tech','Gesamtleistung [kW]'],
