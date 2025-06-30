@@ -718,67 +718,7 @@ async def process_file(file: UploadFile = File(...)):
         del df_dayahead_avg, merged_df
         gc.collect()
 
-        dayaheadprice_production_merge['tech'] = dayaheadprice_production_merge['tech'].astype(str).str.strip().str.upper()
-        df_rmv['tech'] = df_rmv['tech'].astype(str).str.strip().str.upper()
-        merge_prod_rmv_dayahead = pd.merge(dayaheadprice_production_merge, df_rmv, on=['tech','year', 'month'], how='left')
-        merge_prod_rmv_dayahead['time_berlin'] = merge_prod_rmv_dayahead['time_berlin'].dt.tz_localize(None)
-
-        print("🍌🍌🍌")
-        ram_check()
-        del dayaheadprice_production_merge, df_rmv
-        gc.collect()
-
-
-        merge_prod_rmv_dayahead.rename(columns={'power_kwh':'production_kwh'}, inplace=True)
-        merge_prod_rmv_dayahead_dropdup = merge_prod_rmv_dayahead.drop_duplicates(subset=["malo","time_berlin","production_kwh"])
-
-        print("🌶️")
-        ram_check()
-        del merge_prod_rmv_dayahead
-        gc.collect()
-
-        print("🌶️🌶️")
-        ram_check()
-
-        merge_prod_rmv_dayahead_dropdup['deltaspot_eur'] = ((merge_prod_rmv_dayahead_dropdup['production_kwh'] * merge_prod_rmv_dayahead_dropdup['dayaheadprice'] / 1000) -
-            (merge_prod_rmv_dayahead_dropdup['production_kwh'] * merge_prod_rmv_dayahead_dropdup['monthly_reference_market_price_eur_mwh'] / 1000))
-
-
-        monthly_agg = merge_prod_rmv_dayahead_dropdup.groupby(['year', 'month', 'malo']).agg(
-            deltaspot_eur_monthly=('deltaspot_eur', 'sum'),
-            available_months=('available_month_after_filter', 'first'),
-            Marktstammdatenregister=('unit_mastr_id', 'first'),
-            tech=('tech', 'first'),
-        ).reset_index()
-
-        # total production over the years (not limited to 1 year)
-        total_prod = merge_prod_rmv_dayahead_dropdup.groupby(['malo'])['production_kwh'].sum()
-
-        print("🌶️🌶️🌶️")
-        ram_check()
-        del merge_prod_rmv_dayahead_dropdup
-        gc.collect()
-
-        # Map that total back to the original monthly_agg rows
-        monthly_agg['total_prod_kwh'] = monthly_agg.set_index(['malo']).index.map(total_prod)
-        monthly_agg['total_prod_mwh'] = monthly_agg['total_prod_kwh'] / 1000
-
-        monthly_agg['weighted_eur_mwh_monthly'] = (
-            monthly_agg['deltaspot_eur_monthly'] / monthly_agg['total_prod_mwh'] * monthly_agg['available_months']
-        )
-
-        ram_check()
-        print("🌶️🌶️🌶️🌶️")
-
-        year_agg = monthly_agg.groupby(['malo'])['weighted_eur_mwh_monthly'].mean().reset_index(name='prod_weighted_eur_mwh')
-
-        del monthly_agg
-        gc.collect()
-        ram_check()
-        
-        year_agg.columns = year_agg.columns.str.strip()
-        year_agg['malo'] = year_agg['malo'].astype(str).str.strip()
-
+       
 
 
 
@@ -791,7 +731,7 @@ async def process_file(file: UploadFile = File(...)):
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             merge_a2.to_excel(writer,    sheet_name="Processed Data",   index=False)
-            year_agg.to_excel(writer, sheet_name="year_agg", index=False)
+            #year_agg.to_excel(writer, sheet_name="year_agg", index=False)
             #df_enervis_pivot_filter.to_excel(writer, sheet_name="Historical Results", index=False)
             #final_weighted_blindleister.to_excel(writer, sheet_name="final_weighted_blindleister", index=False)
             #df_blind_fetch.to_excel(writer, sheet_name="df_blind_fetch", index=False)
