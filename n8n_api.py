@@ -115,6 +115,14 @@ def download_result_files(job_info, token):
     return dfs if dfs else None
 
 
+def check_memory_usage():
+    process = psutil.Process(os.getpid()) 
+    memory_info = process.memory_info()  
+    return memory_info.rss / 1024 ** 2  
+
+def ram_check():
+    print("memory usage:", check_memory_usage(), "MB")
+
 
 @app.post("/process")
 async def process_file(file: UploadFile = File(...)):
@@ -132,6 +140,7 @@ async def process_file(file: UploadFile = File(...)):
 
         df = df_excel
         df['malo'] = df['malo'].astype(str).str.strip()
+        ram_check()
 
         # Step 2: Filter for 'SEE' IDs
         id_list = df['unit_mastr_id'].dropna()
@@ -143,6 +152,7 @@ async def process_file(file: UploadFile = File(...)):
         unique_see = set(valid_ids)
 
         print("✅ Valid IDs to fetch:", valid_ids)
+        ram_check()
 
         # Step 3: Fetch token
         auth_response = requests.post(
@@ -231,6 +241,7 @@ async def process_file(file: UploadFile = File(...)):
         )
 
         print("🥨🥨🥨")
+        ram_check()
         year_agg_per_unit = df_all_flat.groupby(['year', 'unit_mastr_id'])['weighted_per_mwh_monthly'].mean().reset_index(name='weighted_year_agg_per_unit_eur_mwh')
         df_year_agg_per_unit = pd.DataFrame(year_agg_per_unit)
 
@@ -321,6 +332,7 @@ async def process_file(file: UploadFile = File(...)):
         ] = df_blind_fetch['turbine_model_clean'].astype(str).str.strip() + ' ' + df_blind_fetch['hub_height_m'].astype(str)
 
         print("📦📦 reading excel")
+        ram_check()
 
         # Step 6: Match turbine names from GitHub
         ref_response = requests.get(EXCEL_FILE_URL)
@@ -496,8 +508,11 @@ async def process_file(file: UploadFile = File(...)):
 
         merge_a2 = merge_a2.drop(columns=['id'])
 
+        ram_check()
+
         print("✅ Excel file generated and response returned.")
         print("🥕🥕") 
+        ram_check()
         end = time.time()
 
         # Export to Excel and return as response
