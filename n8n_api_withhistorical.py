@@ -26,6 +26,8 @@ EXCEL_FILE_URL = "https://github.com/js-1881/n8n_repo/raw/main/turbine_types_id_
 DA_PRICE_URL = "https://github.com/js-1881/n8n_repo/raw/main/DA_price_updated_2021.xlsx"
 RMV_PRICE_URL = "https://github.com/js-1881/n8n_repo/raw/main/rmv_price.csv"
 
+print("🦐🦐")
+
 
 # Anemos credentials
 EMAIL    = "amani@flex-power.energy"
@@ -133,7 +135,8 @@ def download_result_files(job_info, token):
 
 @app.post("/process")
 async def process_file(file: UploadFile = File(...)):
-    print("🔔 /process handler invoked")
+    print("🥑🥑 process handler invoked")
+    example_function()
     print("🔔🔔🔔")
     try:
         # Step 1: Load user-uploaded Excel
@@ -148,6 +151,9 @@ async def process_file(file: UploadFile = File(...)):
              },
          ).rename(columns={'Marktstammdatenregister-ID':'unit_mastr_id'})
 
+        example_function()
+        print("🦐🦐🦐🦐")
+        
         df_excel.columns = df_excel.columns.str.strip()
         df_excel['malo'] = df_excel['malo'].astype(str).str.strip()
         df_excel['unit_mastr_id'] = df_excel['unit_mastr_id'].astype(str).str.strip()
@@ -570,6 +576,7 @@ async def process_file(file: UploadFile = File(...)):
 
         ####### STARTING THE HISTORICAL DATA CALCULATION #########
         # FETCH RMV AND DA PRICE from GitHub
+        print("🍣🍣🍣")
         DA_response = requests.get(DA_PRICE_URL)
         DA_response.raise_for_status()
         df_dayahead = pd.read_excel(
@@ -579,6 +586,7 @@ async def process_file(file: UploadFile = File(...)):
             dtype={'dayaheadprice': 'float32'},
             engine='openpyxl',
         )
+        print("🍣")
 
         rmv_response = requests.get(RMV_PRICE_URL)
         rmv_response.raise_for_status()
@@ -598,7 +606,7 @@ async def process_file(file: UploadFile = File(...)):
                                       )
 
         example_function()
-        print("🥕🥕🥕🥕🥕")
+        print("🥕🥕🥕")
 
         #df_source_temp['power_mw'] = pd.to_numeric(df_source_temp['power_mw'], downcast='float')
         #df_source_temp['malo'] = df_source_temp['malo'].astype(str).str.strip()
