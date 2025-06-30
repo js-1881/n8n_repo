@@ -683,26 +683,11 @@ async def process_file(file: UploadFile = File(...)):
 
         df_dayahead_avg.drop_duplicates(subset=['year','month','day', 'hour'],inplace=True)
 
+        print("🫚🫚🫚")
+        ram_check()
 
-        # Step 1: Define expected count per month
-        expected_rows_per_month = 28 * 96
-        # Step 2: Count actual rows per malo, year, month
-        month_counts = (
-            merged_df
-            .groupby(['malo', 'year', 'month'])
-            .size()
-            .reset_index(name='actual_rows')
-        )
-        # Step 3: Check if each month is complete
-        month_counts['is_complete'] = month_counts['actual_rows'] >= expected_rows_per_month
 
-        # Step 4: Filter only the complete months
-        complete_months = month_counts[month_counts['is_complete']]
-
-        # Step 5: Merge the complete months back into the original data
-        merged_df = merged_df.merge(complete_months[['malo', 'year', 'month']], on=['malo', 'year', 'month'], how='inner')
-
-        del complete_months, month_counts
+        
         gc.collect()
         ram_check()
         print("🥥🥥🥥🥥🥥")
