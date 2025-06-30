@@ -710,14 +710,6 @@ async def process_file(file: UploadFile = File(...)):
         print("🥕🥕") 
         
 
-        dayaheadprice_production_merge = pd.merge(merged_df, df_dayahead_avg, on=['year', 'month', 'day', 'hour'], how='inner', suffixes=('', '_price'))  
-        dayaheadprice_production_merge = dayaheadprice_production_merge.drop(columns=['time_berlin_price'])
-
-        print("🥨🥨🥨🥨") 
-        ram_check()
-        del df_dayahead_avg, merged_df
-        gc.collect()
-
        
 
 
