@@ -587,7 +587,7 @@ async def process_file(file: UploadFile = File(...)):
         )
         
         df_source_temp = pd.read_excel(io.BytesIO(contents), sheet_name= 'historical_source', 
-                                       usecols=['malo', 'time_berlin', 'power_kwh'],
+                                       usecols=['malo', 'time_berlin', 'power_mw'],
                                        dtype={'malo': str},
                                        parse_dates=['time_berlin'],
                                        engine='openpyxl',
