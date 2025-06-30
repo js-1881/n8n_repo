@@ -112,10 +112,10 @@ def download_result_files(job_info, token):
     dfs = []
     for res in results:
         year_data = res.get("Marktwertdifferenzen",{})
-        df = pd.DataFrame.from_dict(year_data, orient="index", columns=["Marktwertdifferenz"])
-        df.index.name = "Year"
-        df = df.reset_index().assign(id=res["id"])
-        dfs.append(df)
+        df1 = pd.DataFrame.from_dict(year_data, orient="index", columns=["Marktwertdifferenz"])
+        df1.index.name = "Year"
+        df1 = df1.reset_index().assign(id=res["id"])
+        dfs.append(df1)
     return dfs if dfs else None
 
 
@@ -462,7 +462,7 @@ async def process_file(file: UploadFile = File(...)):
 
         df_final = pd.merge(df, df_fuzzy, on="unit_mastr_id", how="left")
 
-        del df, df_fuzzy
+        del df_fuzzy
         gc.collect()
 
         df_final['hub_height_m_numeric'] = pd.to_numeric(df_final['hub_height_m'], errors='coerce')
