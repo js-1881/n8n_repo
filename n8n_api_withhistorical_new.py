@@ -146,7 +146,7 @@ async def process_file(file: UploadFile = File(...)):
 
         df.columns = df.columns.str.strip()
         df['malo'] = df['malo'].astype(str).str.strip()
-        df['Marktstammdatenregister-ID'] = df['Marktstammdatenregister-ID'].astype(str).str.strip()
+        df['unit_mastr_id'] = df['unit_mastr_id'].astype(str).str.strip()
         df.dropna(subset=("malo"),axis=0, inplace=True)
 
         print("🥑🥑")
