@@ -10,6 +10,8 @@ import os
 import re
 import time
 import gc
+import psutil
+
 start = time.time()
 
 app = FastAPI()
