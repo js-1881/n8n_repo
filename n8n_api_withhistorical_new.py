@@ -666,6 +666,16 @@ async def process_file(file: UploadFile = File(...)):
         ram_check()
 
 
+        df_source_avg = grouped["power_mw"].apply(custom_power_mwh).reset_index()
+        df_source_avg["power_kwh"] = df_source_avg["power_mw"] * 1000 / 4
+        df_source_avg = df_source_avg.drop("power_mw", axis='columns')
+
+        merged_df = pd.merge(df_source_avg, df, on='malo', how='left')
+
+        del df_source_avg, df
+        print("🫚🫚🫚🫚")
+
+
 
 
 
