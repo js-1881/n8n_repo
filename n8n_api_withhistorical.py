@@ -138,24 +138,24 @@ async def process_file(file: UploadFile = File(...)):
     try:
         # Step 1: Load user-uploaded Excel
         contents = await file.read()
-        #df_excel = pd.read_excel(
-        #     io.BytesIO(contents),
-        #     sheet_name='stammdaten',
-        #     usecols=['Projekt','malo','Marktstammdatenregister-ID','tech','Gesamtleistung [kW]'],
-        #     dtype={
-        #       'malo': 'string', 
-        #       'Marktstammdatenregister-ID': 'string',
-        #     },
-        # ).rename(columns={'Marktstammdatenregister-ID':'unit_mastr_id'})
+        df_excel = pd.read_excel(
+             io.BytesIO(contents),
+             sheet_name='stammdaten',
+             usecols=['Projekt','malo','Marktstammdatenregister-ID','tech','Gesamtleistung [kW]'],
+             dtype={
+               'malo': 'string', 
+               'Marktstammdatenregister-ID': 'string',
+             },
+         ).rename(columns={'Marktstammdatenregister-ID':'unit_mastr_id'})
 
-        # df_excel.columns = df_excel.columns.str.strip()
-        # df_excel['malo'] = df_excel['malo'].astype(str).str.strip()
-        # df_excel['unit_mastr_id'] = df_excel['unit_mastr_id'].astype(str).str.strip()
-        # df_excel.dropna(subset=["malo"], axis=0, inplace=True)
+        df_excel.columns = df_excel.columns.str.strip()
+        df_excel['malo'] = df_excel['malo'].astype(str).str.strip()
+        df_excel['unit_mastr_id'] = df_excel['unit_mastr_id'].astype(str).str.strip()
+        df_excel.dropna(subset=["malo"], axis=0, inplace=True)
 
         
-        # df_excel = df_excel[['Projekt','malo', 'unit_mastr_id','tech','Gesamtleistung [kW]']]
-        # #df_excel.rename(columns= {'Marktstammdatenregister-ID': 'unit_mastr_id'}, inplace=True)
+        df_excel = df_excel[['Projekt','malo', 'unit_mastr_id','tech','Gesamtleistung [kW]']]
+        # df_excel.rename(columns= {'Marktstammdatenregister-ID': 'unit_mastr_id'}, inplace=True)
 
         # df = df_excel
         # df['malo'] = df['malo'].astype(str).str.strip()
