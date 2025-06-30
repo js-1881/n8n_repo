@@ -612,6 +612,176 @@ async def process_file(file: UploadFile = File(...)):
         ram_check()
 
 
+
+        # Initialize lists to store results
+        filtered_data = []
+
+        # Iterate over each malo group
+        for malo, group in df_source_temp.groupby('malo'):
+            # Get the first and last time for each 'malo'
+            first_date = group['time_berlin'].min()
+            last_date = group['time_berlin'].max()
+
+            # Calculate the number of months available for the current 'malo'
+            available_months = (last_date.year - first_date.year) * 12 + (last_date.month - first_date.month) + 1
+
+            # Calculate the number of full 12-month periods available
+            full_years = (available_months // 12) * 12  # full multiples of 12 months
+
+            if available_months >= 12:
+                # Filter the data to keep only the first full multiple of 12 months
+                start_date = first_date
+                end_date = first_date + pd.DateOffset(months=full_years)
+
+                # Filter the group based on the calculated 12-month period
+                filtered_group = group[(group['time_berlin'] >= start_date) & (group['time_berlin'] < end_date)]
+
+                # Calculate the available months after filtering
+                available_month_after = (filtered_group['time_berlin'].max().year - filtered_group['time_berlin'].min().year) * 12 + \
+                                        (filtered_group['time_berlin'].max().month - filtered_group['time_berlin'].min().month) + 1
+            else:
+                # If less than 12 months of data, keep it as it is
+                filtered_group = group
+                available_month_after = available_months
+
+            # Add columns for available months before and after filtering
+            filtered_group['available_month_before_filter'] = available_months
+            filtered_group['available_month_after_filter'] = available_month_after
+
+            # Append the filtered group to the result
+            filtered_data.append(filtered_group)
+            df_source = pd.concat(filtered_data)
+
+
+        grouped = df_source.groupby(["malo", "time_berlin", "available_month_before_filter", "available_month_after_filter"])
+        def custom_power_mwh(group):
+            if group.nunique() == 1:
+                return group.mean()
+            else:
+                return group.sum()
+
+        del df_source
+        gc.collect()
+        print("🥥🥥🥥🥥")
+        ram_check()
+
+        df_source_avg = grouped["power_mw"].apply(custom_power_mwh).reset_index()
+        df_source_avg["power_kwh"] = df_source_avg["power_mw"] * 1000 / 4
+        df_source_avg = df_source_avg.drop("power_mw", axis='columns')
+
+        merged_df = pd.merge(df_source_avg, df, on='malo', how='left')
+
+        del df_source_avg, df
+        print("🫚🫚🫚🫚")
+        
+   
+        for df, col in [(merged_df, 'time_berlin'), (df_dayahead_avg, 'time_berlin')]:
+            df['year'] = df[col].dt.year
+            df['month'] = df[col].dt.month
+            df['day'] = df[col].dt.day
+            df['hour'] = df[col].dt.hour
+
+        df_dayahead_avg.drop_duplicates(subset=['year','month','day', 'hour'],inplace=True)
+
+
+        # Step 1: Define expected count per month
+        expected_rows_per_month = 28 * 96
+        # Step 2: Count actual rows per malo, year, month
+        month_counts = (
+            merged_df
+            .groupby(['malo', 'year', 'month'])
+            .size()
+            .reset_index(name='actual_rows')
+        )
+        # Step 3: Check if each month is complete
+        month_counts['is_complete'] = month_counts['actual_rows'] >= expected_rows_per_month
+
+        # Step 4: Filter only the complete months
+        complete_months = month_counts[month_counts['is_complete']]
+
+        # Step 5: Merge the complete months back into the original data
+        merged_df = merged_df.merge(complete_months[['malo', 'year', 'month']], on=['malo', 'year', 'month'], how='inner')
+
+        del complete_months, month_counts
+        gc.collect()
+        ram_check()
+        print("🥥🥥🥥🥥🥥")
+
+        print("🥕🥕") 
+        
+
+        dayaheadprice_production_merge = pd.merge(merged_df, df_dayahead_avg, on=['year', 'month', 'day', 'hour'], how='inner', suffixes=('', '_price'))  
+        dayaheadprice_production_merge = dayaheadprice_production_merge.drop(columns=['time_berlin_price'])
+
+        print("🥨🥨🥨🥨") 
+        ram_check()
+        del df_dayahead_avg, merged_df
+        gc.collect()
+
+        dayaheadprice_production_merge['tech'] = dayaheadprice_production_merge['tech'].astype(str).str.strip().str.upper()
+        df_rmv['tech'] = df_rmv['tech'].astype(str).str.strip().str.upper()
+        merge_prod_rmv_dayahead = pd.merge(dayaheadprice_production_merge, df_rmv, on=['tech','year', 'month'], how='left')
+        merge_prod_rmv_dayahead['time_berlin'] = merge_prod_rmv_dayahead['time_berlin'].dt.tz_localize(None)
+
+        print("🍌🍌🍌")
+        ram_check()
+        del dayaheadprice_production_merge, df_rmv
+        gc.collect()
+
+
+        merge_prod_rmv_dayahead.rename(columns={'power_kwh':'production_kwh'}, inplace=True)
+        merge_prod_rmv_dayahead_dropdup = merge_prod_rmv_dayahead.drop_duplicates(subset=["malo","time_berlin","production_kwh"])
+
+        print("🌶️")
+        ram_check()
+        del merge_prod_rmv_dayahead
+        gc.collect()
+
+        print("🌶️🌶️")
+        ram_check()
+
+        merge_prod_rmv_dayahead_dropdup['deltaspot_eur'] = ((merge_prod_rmv_dayahead_dropdup['production_kwh'] * merge_prod_rmv_dayahead_dropdup['dayaheadprice'] / 1000) -
+            (merge_prod_rmv_dayahead_dropdup['production_kwh'] * merge_prod_rmv_dayahead_dropdup['monthly_reference_market_price_eur_mwh'] / 1000))
+
+
+        monthly_agg = merge_prod_rmv_dayahead_dropdup.groupby(['year', 'month', 'malo']).agg(
+            deltaspot_eur_monthly=('deltaspot_eur', 'sum'),
+            available_months=('available_month_after_filter', 'first'),
+            Marktstammdatenregister=('unit_mastr_id', 'first'),
+            tech=('tech', 'first'),
+        ).reset_index()
+
+        # total production over the years (not limited to 1 year)
+        total_prod = merge_prod_rmv_dayahead_dropdup.groupby(['malo'])['production_kwh'].sum()
+
+        print("🌶️🌶️🌶️")
+        ram_check()
+        del merge_prod_rmv_dayahead_dropdup
+        gc.collect()
+
+        # Map that total back to the original monthly_agg rows
+        monthly_agg['total_prod_kwh'] = monthly_agg.set_index(['malo']).index.map(total_prod)
+        monthly_agg['total_prod_mwh'] = monthly_agg['total_prod_kwh'] / 1000
+
+        monthly_agg['weighted_eur_mwh_monthly'] = (
+            monthly_agg['deltaspot_eur_monthly'] / monthly_agg['total_prod_mwh'] * monthly_agg['available_months']
+        )
+
+        ram_check()
+        print("🌶️🌶️🌶️🌶️")
+
+        year_agg = monthly_agg.groupby(['malo'])['weighted_eur_mwh_monthly'].mean().reset_index(name='prod_weighted_eur_mwh')
+
+        del monthly_agg
+        gc.collect()
+        ram_check()
+        
+        year_agg.columns = year_agg.columns.str.strip()
+        year_agg['malo'] = year_agg['malo'].astype(str).str.strip()
+
+
+
+
         print("✅ Excel file generated and response returned.")
         print("🥕🥕") 
         ram_check()
@@ -621,6 +791,7 @@ async def process_file(file: UploadFile = File(...)):
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             merge_a2.to_excel(writer,    sheet_name="Processed Data",   index=False)
+            year_agg.to_excel(writer, sheet_name="year_agg", index=False)
             #df_enervis_pivot_filter.to_excel(writer, sheet_name="Historical Results", index=False)
             #final_weighted_blindleister.to_excel(writer, sheet_name="final_weighted_blindleister", index=False)
             #df_blind_fetch.to_excel(writer, sheet_name="df_blind_fetch", index=False)
