@@ -29,6 +29,14 @@ RMV_PRICE_URL = "https://github.com/js-1881/n8n_repo/raw/main/rmv_price.csv"
 EMAIL    = "amani@flex-power.energy"
 PASSWORD = "ypq_CZE2wpg*jgu7hfk"
 
+def check_memory_usage():
+    process = psutil.Process(os.getpid())  
+    memory_info = process.memory_info()
+    return memory_info.rss / 1024 ** 2  
+
+def example_function():
+    print("Memory usage:", check_memory_usage(), "MB")
+
 # --- Anemos helper functions ---
 def get_token():
     url = "https://keycloak.anemosgmbh.com/auth/realms/awis/protocol/openid-connect/token"
@@ -574,33 +582,16 @@ async def process_file(file: UploadFile = File(...)):
             io.BytesIO(rmv_response.content),
             usecols=['tech','year','monthly_reference_market_price_eur_mwh'],
             dtype={
-              #'year':'int16',
               'monthly_reference_market_price_eur_mwh':'float32'
             }
         )
         
-        text = contents.decode('utf-8')
-        processed_chunks = []
-
-        for chunk in pd.read_csv(
-            StringIO(text),
-            usecols=['malo', 'time_berlin', 'power_mw'],
-            dtype={'malo': 'string', 'power_mw':'float32'},
-            parse_dates=['time_berlin'],
-            dayfirst=True,          # interpret DD.MM.YYYY correctly
-            chunksize=50_000,      # read 100k rows at a time
-            engine='python'         # safer for some CSV quirks
-        ):
-            # clean up malo
-            chunk['malo'] = chunk['malo'].str.strip()
-            # now you have a datetime in chunk.time_berlin
-            # you can do whatever per‐chunk filtering/aggregation you need here
-            processed_chunks.append(chunk)
-        
-        # once all chunks are processed, concatenate if needed
-        df_source_temp = pd.concat(processed_chunks, ignore_index=True)
-        del processed_chunks  # free memory
-        gc.collect()
+        df_source_temp = pd.read_excel(io.BytesIO(contents), sheet_name= 'historical_source', 
+                                       usecols=['malo', 'time_berlin', 'power_kwh'],
+                                       dtype={'malo': str},
+                                       parse_dates=['time_berlin'],
+                                       engine='openpyxl',
+                                      )
 
         #df_source_temp['power_mw'] = pd.to_numeric(df_source_temp['power_mw'], downcast='float')
         #df_source_temp['malo'] = df_source_temp['malo'].astype(str).str.strip()
@@ -612,21 +603,14 @@ async def process_file(file: UploadFile = File(...)):
                     errors='coerce'  # Invalid date formats will become NaT (Not a Time)
                 )
 
-
-        
         df_dayahead['time'] = pd.to_datetime(df_dayahead['time'])
         df_dayahead['time'] = df_dayahead['time'].dt.tz_localize('UTC').dt.tz_convert('Europe/Berlin')
-        df_dayahead['naive_time'] = df_dayahead['time'].dt.tz_localize(None)
-        df_dayahead_avg = df_dayahead.groupby('naive_time', as_index=False)['dayaheadprice'].mean()
+        df_dayahead['time_berlin'] = df_dayahead['time'].dt.tz_localize(None)
+        df_dayahead_avg = df_dayahead.groupby('time_berlin', as_index=False)['dayaheadprice'].mean()
 
         del df_dayahead
         gc.collect()
-        
-        df_dayahead_avg = df_dayahead_avg.rename(columns={'naive_time': 'time_berlin'})
-
-        
-
-
+        example_function()
         print("🥕")
 
         # Initialize lists to store results
@@ -681,11 +665,15 @@ async def process_file(file: UploadFile = File(...)):
 
         df_source_avg = grouped["power_mw"].apply(custom_power_mwh).reset_index()
         df_source_avg["power_kwh"] = df_source_avg["power_mw"] * 1000 / 4
+        df_source_avg = df_source_avg.drop("power_mw", axis='columns')
 
         merged_df = pd.merge(df_source_avg, df_excel, on='malo', how='left')
 
+        example_function()
+        print("🫚🫚🫚🫚")
         del df_source_avg, df_excel
         gc.collect()
+        example_function()
    
         for df, col in [(merged_df, 'time_berlin'), (df_dayahead_avg, 'time_berlin')]:
             df['year'] = df[col].dt.year
@@ -713,8 +701,12 @@ async def process_file(file: UploadFile = File(...)):
         # Step 5: Merge the complete months back into the original data
         merged_df = merged_df.merge(complete_months[['malo', 'year', 'month']], on=['malo', 'year', 'month'], how='inner')
 
+        del complete_months, month_counts
+        gc.collect()
+        example_function()
+
         print("🥕🥕") 
-        print("🥨🥨🥨🥨🥨🥨🥨🥨🥨🥨🥨🥨🥨🥨🥨🥨🥨🥨") 
+        print("🥨🥨🥨🥨") 
 
 
 
@@ -722,7 +714,8 @@ async def process_file(file: UploadFile = File(...)):
         dayaheadprice_production_merge = pd.merge(merged_df, df_dayahead_avg, on=['year', 'month', 'day', 'hour'], how='inner', suffixes=('', '_price'))  
         dayaheadprice_production_merge = dayaheadprice_production_merge.drop(columns=['time_berlin_price'])
 
-        del merged_df, df_dayahead_avg
+        example_function()
+        del df_dayahead_avg
         gc.collect()
 
         dayaheadprice_production_merge['tech'] = dayaheadprice_production_merge['tech'].astype(str).str.strip().str.upper()
@@ -730,12 +723,22 @@ async def process_file(file: UploadFile = File(...)):
         merge_prod_rmv_dayahead = pd.merge(dayaheadprice_production_merge, df_rmv, on=['tech','year', 'month'], how='left')
         merge_prod_rmv_dayahead['time_berlin'] = merge_prod_rmv_dayahead['time_berlin'].dt.tz_localize(None)
 
+        print("🍌🍌🍌")
+        example_function()
         del dayaheadprice_production_merge, df_rmv
         gc.collect()
 
-        merge_prod_rmv_dayahead.rename(columns={'power_kwh':'production_kwh'}, inplace=True)
 
+        merge_prod_rmv_dayahead.rename(columns={'power_kwh':'production_kwh'}, inplace=True)
         merge_prod_rmv_dayahead_dropdup = merge_prod_rmv_dayahead.drop_duplicates(subset=["malo","time_berlin","production_kwh"])
+
+
+        example_function()
+        del merge_prod_rmv_dayahead
+        gc.collect()
+
+        print("🌶️🌶️")
+        example_function()
 
         merge_prod_rmv_dayahead_dropdup['deltaspot_eur'] = ((merge_prod_rmv_dayahead_dropdup['production_kwh'] * merge_prod_rmv_dayahead_dropdup['dayaheadprice'] / 1000) -
             (merge_prod_rmv_dayahead_dropdup['production_kwh'] * merge_prod_rmv_dayahead_dropdup['monthly_reference_market_price_eur_mwh'] / 1000))
@@ -751,6 +754,10 @@ async def process_file(file: UploadFile = File(...)):
         # total production over the years (not limited to 1 year)
         total_prod = merge_prod_rmv_dayahead_dropdup.groupby(['malo'])['production_kwh'].sum()
 
+        example_function()
+        del merge_prod_rmv_dayahead_dropdup
+        gc.collect()
+
         # Map that total back to the original monthly_agg rows
         monthly_agg['total_prod_kwh'] = monthly_agg.set_index(['malo']).index.map(total_prod)
         monthly_agg['total_prod_mwh'] = monthly_agg['total_prod_kwh'] / 1000
@@ -759,7 +766,14 @@ async def process_file(file: UploadFile = File(...)):
             monthly_agg['deltaspot_eur_monthly'] / monthly_agg['total_prod_mwh'] * monthly_agg['available_months']
         )
 
+        example_function()
+
         year_agg = monthly_agg.groupby(['malo'])['weighted_eur_mwh_monthly'].mean().reset_index(name='prod_weighted_eur_mwh')
+
+        del monthly_agg
+        gc.collect()
+        example_function()
+        
         year_agg.columns = year_agg.columns.str.strip()
         year_agg['malo'] = year_agg['malo'].astype(str).str.strip()
 
