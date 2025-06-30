@@ -154,7 +154,9 @@ async def process_file(file: UploadFile = File(...)):
         df_excel.dropna(subset=["malo"], axis=0, inplace=True)
 
         
-        df_excel = df_excel[['Projekt','malo', 'unit_mastr_id','tech','Gesamtleistung [kW]']]
+        df_excel = df_excel[['Projekt','malo', 'unit_mastr_id','tech'
+                             #'Gesamtleistung [kW]'
+                            ]]
         # df_excel.rename(columns= {'Marktstammdatenregister-ID': 'unit_mastr_id'}, inplace=True)
 
         # df = df_excel
@@ -594,6 +596,9 @@ async def process_file(file: UploadFile = File(...)):
                                        parse_dates=['time_berlin'],
                                        engine='openpyxl',
                                       )
+
+        example_function()
+        print("🥕🥕🥕🥕🥕")
 
         #df_source_temp['power_mw'] = pd.to_numeric(df_source_temp['power_mw'], downcast='float')
         #df_source_temp['malo'] = df_source_temp['malo'].astype(str).str.strip()
