@@ -8,6 +8,7 @@ import numpy as np
 import os
 import re
 import time
+import psutil
 start = time.time()
 
 app = FastAPI()
