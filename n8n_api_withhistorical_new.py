@@ -693,6 +693,7 @@ async def process_file(file: UploadFile = File(...)):
         )
         
         df_dayahead_avg.drop(columns=['time_berlin'], inplace=True)
+        df_dayahead_avg = df_dayahead_avg.drop_duplicates(subset=["time_hour","dayaheadprice"])
 
         df['tech'] = df['tech'].astype('category')
         tech_map = df.groupby('malo')['tech'].first()
@@ -732,15 +733,17 @@ async def process_file(file: UploadFile = File(...)):
             df_dayahead_avg,
             on= 'time_hour',
             how='inner',
-            suffixes=('','_price'),
+            #suffixes=('','_price'),
         )
 
-        dayaheadprice_production_merge['year']  = dayaheadprice_production_merge['time_hour'].dt.year.astype('int16')
-        dayaheadprice_production_merge['month'] = dayaheadprice_production_merge['time_hour'].dt.month.astype('int8')
+        dayaheadprice_production_merge.drop(columns=['time_hour'], inplace=True)
+
+        dayaheadprice_production_merge['year']  = dayaheadprice_production_merge['time_berlin'].dt.year.astype('int16')
+        dayaheadprice_production_merge['month'] = dayaheadprice_production_merge['time_berlin'].dt.month.astype('int8')
 
         dayaheadprice_production_merge["tech"] = dayaheadprice_production_merge["tech"].str.strip().str.upper().astype("category")
 
-        dayaheadprice_production_merge.drop(columns=['time_hour_price', 'time_hour'], inplace=True)
+        #dayaheadprice_production_merge.drop(columns=['time_hour_price', 'time_hour'], inplace=True)
 
         del merged_df, 
         del df_dayahead_avg
@@ -776,9 +779,9 @@ async def process_file(file: UploadFile = File(...)):
         
         
         merge_prod_rmv_dayahead.rename(columns={'power_kwh':'production_kwh'}, inplace=True)
-        #merge_prod_rmv_dayahead_dropdup = merge_prod_rmv_dayahead.drop_duplicates(subset=["malo","time_berlin","production_kwh"])
-        merge_prod_rmv_dayahead_dropdup.drop(columns = ["tech"], inplace=True)
-
+        merge_prod_rmv_dayahead.drop(columns = ["tech"], inplace=True)
+        
+        merge_prod_rmv_dayahead_dropdup = merge_prod_rmv_dayahead.drop_duplicates(subset=["malo","time_hour","production_kwh"])
         
         ram_check()
         del merge_prod_rmv_dayahead
