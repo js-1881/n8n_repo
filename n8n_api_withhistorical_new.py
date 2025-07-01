@@ -671,8 +671,8 @@ async def process_file(file: UploadFile = File(...)):
         df_source_avg = df_source_avg.drop("power_mw", axis='columns')
 
 
-        print("NEW METHOD")
-        print("🧋🧋🧋")
+                print("NEW METHOD")
+        print("🧋🧋🧋") 
 
         df_source_avg['time_hour'] = (
             df_source_avg['time_berlin']
@@ -685,8 +685,11 @@ async def process_file(file: UploadFile = File(...)):
             .dt.floor('H')
         )
 
-        merged_df = pd.merge(df_source_avg, df, on='malo', how='left')
-        del df_source_avg, df
+        df['tech'] = df['tech'].astype('category')
+        tech_map = df.set_index('malo')['tech']
+        merged_df['tech'] = merged_df['malo'].map(tech_map).astype('category')
+
+        del df_source_avg, tech_map
         gc.collect()
 
         print("🫚 after merge")
@@ -706,7 +709,7 @@ async def process_file(file: UploadFile = File(...)):
         merged_df = merged_df.merge(complete_months, on=['malo','month'], how='inner')
         merged_df.drop(columns='month', inplace=True)
 
-        del complete_months
+        del complete_months, month_counts
         ram_check()
         print("🫚🫚 after filtering complete months")
         ram_check()
@@ -715,7 +718,7 @@ async def process_file(file: UploadFile = File(...)):
         dayaheadprice_production_merge = pd.merge(
             merged_df,
             df_dayahead_avg,
-            on=['malo','time_hour'],
+            on= 'time_hour',
             how='inner',
             suffixes=('','_price'),
         )
@@ -733,6 +736,8 @@ async def process_file(file: UploadFile = File(...)):
 
         dayaheadprice_production_merge["tech"] = dayaheadprice_production_merge["tech"].str.strip().str.upper().astype("category")
         df_rmv["tech"] = df_rmv["tech"].str.strip().str.upper().astype("category")
+
+
 
         merge_prod_rmv_dayahead = dayaheadprice_production_merge.merge(
             df_rmv,
