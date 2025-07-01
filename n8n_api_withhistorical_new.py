@@ -579,7 +579,7 @@ async def process_file(file: UploadFile = File(...)):
         rmv_response.raise_for_status()
         df_rmv = pd.read_csv(
             io.BytesIO(rmv_response.content),
-            usecols=['tech','year','monthly_reference_market_price_eur_mwh'],
+            usecols=['tech','month','year','monthly_reference_market_price_eur_mwh'],
             dtype={
               'monthly_reference_market_price_eur_mwh':'float32'
             }
