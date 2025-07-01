@@ -591,9 +591,11 @@ async def process_file(file: UploadFile = File(...)):
         df_source_temp = pd.read_excel(io.BytesIO(contents), sheet_name= 'historical_source', 
                                        usecols=['malo', 'time_berlin', 'power_mw'],
                                        dtype={'malo': str},
-                                       parse_dates=['time_berlin'],
                                        engine='openpyxl',
                                       )
+
+        df.columns = df.columns.str.strip()
+        df['malo'] = df['malo'].astype(str).str.strip()
         
         df_source_temp['time_berlin'] = pd.to_datetime(
                     df_source_temp['time_berlin'], 
@@ -650,7 +652,11 @@ async def process_file(file: UploadFile = File(...)):
 
             # Append the filtered group to the result
             filtered_data.append(filtered_group)
-            df_source = pd.concat(filtered_data)
+        
+        df_source = pd.concat(filtered_data)
+
+        del filtered_data
+        gc.collect()
 
 
         grouped = df_source.groupby(["malo", "time_berlin", "available_month_before_filter", "available_month_after_filter"])
@@ -710,7 +716,7 @@ async def process_file(file: UploadFile = File(...)):
         merged_df.drop(columns='month', inplace=True)
 
         del complete_months, month_counts
-        #del df_source_avg
+        del df_source_avg
         
         ram_check()
         print("🫚🫚 after filtering complete months")
@@ -727,7 +733,7 @@ async def process_file(file: UploadFile = File(...)):
 
         dayaheadprice_production_merge.drop(columns=['time_berlin_price', 'time_hour'], inplace=True)
 
-        #del merged_df, 
+        del merged_df, 
         del df_dayahead_avg
         gc.collect()
 
