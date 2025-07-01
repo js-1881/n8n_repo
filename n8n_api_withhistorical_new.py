@@ -757,9 +757,10 @@ async def process_file(file: UploadFile = File(...)):
         # WORKS UNTIL THIS
         # WORKS UNTIL THIS
         
-        merge_prod_rmv_dayahead_dropdup.drop(columns = ["tech","year","month"], inplace=True)
+        
         merge_prod_rmv_dayahead.rename(columns={'power_kwh':'production_kwh'}, inplace=True)
         merge_prod_rmv_dayahead_dropdup = merge_prod_rmv_dayahead.drop_duplicates(subset=["malo","time_berlin","production_kwh"])
+        merge_prod_rmv_dayahead_dropdup.drop(columns = ["tech","year","month"], inplace=True)
 
         print("🌶️")
         ram_check()
