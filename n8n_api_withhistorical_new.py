@@ -757,10 +757,12 @@ async def process_file(file: UploadFile = File(...)):
         #merge_prod_rmv_dayahead.drop(columns=['year','month'], inplace=True)
         #merge_prod_rmv_dayahead["time_berlin"] = merge_prod_rmv_dayahead["time_berlin"].dt.tz_localize(None)
 
-        print("🫚🫚🫚🫚 after joining rmv")
+        
         ram_check()
         del dayaheadprice_production_merge, df_rmv
         gc.collect()
+        print("🫚🫚🫚🫚 after joining rmv")
+        ram_check()
 
         print("🍌🍌🍌")
         # WORKS UNTIL THIS
@@ -771,10 +773,11 @@ async def process_file(file: UploadFile = File(...)):
         merge_prod_rmv_dayahead_dropdup = merge_prod_rmv_dayahead.drop_duplicates(subset=["malo","time_berlin","production_kwh"])
         merge_prod_rmv_dayahead_dropdup.drop(columns = ["tech"], inplace=True)
 
-        print("🌶️")
+        
         ram_check()
         del merge_prod_rmv_dayahead
         gc.collect()
+        print("🌶️")
         ram_check()
 
         merge_prod_rmv_dayahead_dropdup['deltaspot_eur'] = ((merge_prod_rmv_dayahead_dropdup['production_kwh'] * merge_prod_rmv_dayahead_dropdup['dayaheadprice'] / 1000) -
@@ -793,6 +796,7 @@ async def process_file(file: UploadFile = File(...)):
         ).reset_index()
 
         # total production over the years (not limited to 1 year)
+        merge_prod_rmv_dayahead_dropdup.drop(columns = ['year', 'month'], inplace=True)
         total_prod = merge_prod_rmv_dayahead_dropdup.groupby(['malo'])['production_kwh'].sum()
 
         print("🌶️🌶️🌶️")
@@ -824,7 +828,7 @@ async def process_file(file: UploadFile = File(...)):
         print(year_agg)
         
         ram_check()
-        #del monthly_agg
+        del monthly_agg
         print("🌶️🌶️🌶️🌶️🌶️")
         gc.collect()
         ram_check()
@@ -833,22 +837,11 @@ async def process_file(file: UploadFile = File(...)):
         year_agg['malo'] = year_agg['malo'].astype(str).str.strip()
 
         merge_b1 = pd.merge(merge_a2, year_agg, on = "malo", how = "left")
-        
-        print("merge_b1")
-        print(merge_b1)
 
         ram_check()
 
-        
-        
-        
         print("🥥🥥🥥🥥🥥")
         print("🥕🥕") 
-
-        
-
-
-
 
 
         print("✅ Excel file generated and response returned.")
@@ -860,9 +853,9 @@ async def process_file(file: UploadFile = File(...)):
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             merge_a2.to_excel(writer,    sheet_name="Processed Data",   index=False)
-            merge_b1.to_excel(writer,    sheet_name="COMBINE Data",   index=False)
-            year_agg.to_excel(writer, sheet_name="year_agg", index=False)
-            monthly_agg.to_excel(writer, sheet_name="monthly_agg", index=False)
+            merge_b1.to_excel(writer,    sheet_name="COMBINE PRICING",   index=False)
+            #year_agg.to_excel(writer, sheet_name="year_agg", index=False)
+            #monthly_agg.to_excel(writer, sheet_name="monthly_agg", index=False)
             #df_source.to_excel(writer, sheet_name="df_source", index=False)
             #df_enervis_pivot_filter.to_excel(writer, sheet_name="Historical Results", index=False)
             #final_weighted_blindleister.to_excel(writer, sheet_name="final_weighted_blindleister", index=False)
