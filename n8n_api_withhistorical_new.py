@@ -805,6 +805,11 @@ async def process_file(file: UploadFile = File(...)):
         print("🌶️🌶️🌶️🌶️")
 
         year_agg = monthly_agg.groupby(['malo'])['weighted_eur_mwh_monthly'].mean().reset_index(name='prod_weighted_eur_mwh')
+
+        year_agg = monthly_agg.groupby(['malo'], dropna=False).agg(
+            prod_weighted_eur_mwh = ('weighted_eur_mwh_monthly','mean'),
+            available_months=('available_months', 'first'),
+        ).reset_index()
         
         ram_check()
         del monthly_agg
@@ -815,7 +820,7 @@ async def process_file(file: UploadFile = File(...)):
         year_agg.columns = year_agg.columns.str.strip()
         year_agg['malo'] = year_agg['malo'].astype(str).str.strip()
 
-        merge_b1 = pd.merge(year_agg, merge_a2, on = "malo", how = "left")
+        merge_b1 = pd.merge(merge_a2, year_agg, on = "malo", how = "left")
 
         ram_check()
         del year_agg
@@ -843,7 +848,7 @@ async def process_file(file: UploadFile = File(...)):
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             merge_a2.to_excel(writer,    sheet_name="Processed Data",   index=False)
             merge_b1.to_excel(writer,    sheet_name="COMBINE Data",   index=False)
-            #year_agg.to_excel(writer, sheet_name="year_agg", index=False)
+            year_agg.to_excel(writer, sheet_name="year_agg", index=False)
             #df_enervis_pivot_filter.to_excel(writer, sheet_name="Historical Results", index=False)
             #final_weighted_blindleister.to_excel(writer, sheet_name="final_weighted_blindleister", index=False)
             #df_blind_fetch.to_excel(writer, sheet_name="df_blind_fetch", index=False)
