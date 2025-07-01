@@ -671,7 +671,7 @@ async def process_file(file: UploadFile = File(...)):
         df_source_avg = df_source_avg.drop("power_mw", axis='columns')
 
 
-                print("NEW METHOD")
+        print("NEW METHOD")
         print("🧋🧋🧋") 
 
         df_source_avg['time_hour'] = (
