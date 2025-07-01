@@ -823,8 +823,6 @@ async def process_file(file: UploadFile = File(...)):
         merge_b1 = pd.merge(merge_a2, year_agg, on = "malo", how = "left")
 
         ram_check()
-        del year_agg
-        gc.collect()
 
         
         
