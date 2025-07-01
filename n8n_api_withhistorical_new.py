@@ -666,7 +666,7 @@ async def process_file(file: UploadFile = File(...)):
             else:
                 return group.sum()
 
-        del df_source
+        #del df_source
         gc.collect()
         print("🥥🥥🥥🥥")
         ram_check()
@@ -733,7 +733,7 @@ async def process_file(file: UploadFile = File(...)):
 
         dayaheadprice_production_merge.drop(columns=['time_berlin_price', 'time_hour'], inplace=True)
 
-        del merged_df, 
+        #del merged_df, 
         del df_dayahead_avg
         gc.collect()
 
@@ -885,6 +885,7 @@ async def process_file(file: UploadFile = File(...)):
             merge_b1.to_excel(writer,    sheet_name="COMBINE Data",   index=False)
             year_agg.to_excel(writer, sheet_name="year_agg", index=False)
             monthly_agg.to_excel(writer, sheet_name="monthly_agg", index=False)
+            df_source.to_excel(writer, sheet_name="df_source", index=False)
             #df_enervis_pivot_filter.to_excel(writer, sheet_name="Historical Results", index=False)
             #final_weighted_blindleister.to_excel(writer, sheet_name="final_weighted_blindleister", index=False)
             #df_blind_fetch.to_excel(writer, sheet_name="df_blind_fetch", index=False)
