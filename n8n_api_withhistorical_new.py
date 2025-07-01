@@ -670,113 +670,84 @@ async def process_file(file: UploadFile = File(...)):
         df_source_avg["power_kwh"] = df_source_avg["power_mw"] * 1000 / 4
         df_source_avg = df_source_avg.drop("power_mw", axis='columns')
 
-        # ————————————————————————————————————
-        # 1. Merge and drop inputs immediately
-        merged = (
-            df_source_avg
-            .merge(df, on="malo", how="left")
+
+        print("NEW METHOD")
+        print("🧋🧋🧋")
+
+        df_source_avg['time_hour'] = (
+            df_source_avg['time_berlin']
+            .dt.tz_localize(None)    
+            .dt.floor('H')           # floor down to the hour
         )
-        
+
+        df_dayahead_avg['time_hour'] = (
+            df_dayahead_avg['time_berlin']
+            .dt.floor('H')
+        )
+
+        merged_df = pd.merge(df_source_avg, df, on='malo', how='left')
         del df_source_avg, df
         gc.collect()
 
         print("🫚 after merge")
         ram_check()
 
-        # ————————————————————————————————————
-        # 2. Extract datetime parts for both merged & dayahead in one shot
-
-        # Rename your datetime columns to the same name so you can batch process them
-        merged = merged.rename(columns={"time_berlin": "dt"})
-        df_dayahead_avg = df_dayahead_avg.rename(columns={"time_berlin": "dt"})
-
-        # Stack them so we can extract once, then split again
-        stacked = (
-            pd.concat(
-                [
-                    merged.assign(_source="merged"),
-                    df_dayahead_avg.assign(_source="dayahead"),
-                ],
-                ignore_index=True,
-            )
-            .assign(
-                year=lambda d: d["dt"].dt.year.astype("int16"),
-                month=lambda d: d["dt"].dt.month.astype("int8"),
-                day=lambda d: d["dt"].dt.day.astype("int8"),
-                hour=lambda d: d["dt"].dt.hour.astype("int8"),
-            )
-        )
-
-        # Split back out
-        merged = stacked.query('_source == "merged"').drop(columns=["_source", "dt"])
-        df_dayahead_avg = (
-            stacked.query('_source == "dayahead"')
-            .drop(columns=["_source", "dt"])
-            .drop_duplicates(subset=["year","month","day","hour"])
-            .reset_index(drop=True)
-        )
-        del stacked
-        gc.collect()
-
-        print("🫚🫚 after datetime extraction")
-        ram_check()
-
-        # ————————————————————————————————————
-        # 3. Filter to complete months in one shot
-
-        # Count rows per (malo, year, month) and keep only those >= threshold
-        threshold = 28 * 96
-        counts = (
-            merged
-            .groupby(["malo","year","month"], observed=True)
+        expected_rows_per_month = 28 * 96
+        merged_df['month'] = merged_df['time_hour'].dt.to_period('M')
+        month_counts = (
+            merged_df
+            .groupby(['malo','month'])
             .size()
-            .reset_index(name="count")
+            .reset_index(name='actual_rows')
         )
-        good = counts.loc[counts["count"] >= threshold, ["malo","year","month"]]
 
-        # Inner‐join back
-        merged = merged.merge(good, on=["malo","year","month"], how="inner")
-        
-        del counts, good
-        gc.collect()
-        print("🥥 after filtering complete months")
+        month_counts['is_complete'] = month_counts['actual_rows'] >= expected_rows_per_month
+        complete_months = month_counts.loc[month_counts['is_complete'], ['malo','month']]
+        merged_df = merged_df.merge(complete_months, on=['malo','month'], how='inner')
+        merged_df.drop(columns='month', inplace=True)
+
+        del complete_months
+        ram_check()
+        print("🫚🫚 after filtering complete months")
         ram_check()
 
-        # ————————————————————————————————————
-        # 4. Join with dayahead and drop now‐unneeded frames
 
-        dpm = (
-            merged
-            .merge(
-                df_dayahead_avg,
-                on=["year","month","day","hour"],
-                suffixes=("", "_price"),
-                how="inner",
-            )
-            .drop(columns=["time_berlin_price"], errors="ignore")
+        dayaheadprice_production_merge = pd.merge(
+            merged_df,
+            df_dayahead_avg,
+            on=['malo','time_hour'],
+            how='inner',
+            suffixes=('','_price'),
         )
-        del merged, df_dayahead_avg
+
+        dayaheadprice_production_merge.drop(columns=['time_berlin_price'], inplace=True)
+
+        del merged_df, df_dayahead_avg
         gc.collect()
 
-        print("🥨 after joining day‐ahead")
+        print("🫚🫚🫚 after joining day‐ahead")
         ram_check()
 
-        # ————————————————————————————————————
-        # 5. Final join with rmv – convert ‘tech’ to categorical first
+        dayaheadprice_production_merge['year']  = dayaheadprice_production_merge['time_berlin'].dt.year.astype('int16')
+        dayaheadprice_production_merge['month'] = dayaheadprice_production_merge['time_berlin'].dt.month.astype('int8')
 
-        dpm["tech"] = dpm["tech"].str.strip().str.upper().astype("category")
+        dayaheadprice_production_merge["tech"] = dayaheadprice_production_merge["tech"].str.strip().str.upper().astype("category")
         df_rmv["tech"] = df_rmv["tech"].str.strip().str.upper().astype("category")
 
-        merge_prod_rmv_dayahead = dpm.merge(
+        merge_prod_rmv_dayahead = dayaheadprice_production_merge.merge(
             df_rmv,
             on=["tech","year","month"],
             how="left",
         )
-        merge_prod_rmv_dayahead["time_berlin"] = merge_prod_rmv_dayahead["time_berlin"].dt.tz_localize(None)
 
-        del dpm, df_rmv
+        merge_prod_rmv_dayahead.drop(columns=['year','month'], inplace=True)
+        #merge_prod_rmv_dayahead["time_berlin"] = merge_prod_rmv_dayahead["time_berlin"].dt.tz_localize(None)
+
+        print("🫚🫚🫚🫚 after joining rmv")
+        ram_check()
+        del dayaheadprice_production_merge, df_rmv
         gc.collect()
-
+        
         print("🥥🥥🥥🥥🥥")
         print("🥕🥕") 
 
