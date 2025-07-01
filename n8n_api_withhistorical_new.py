@@ -670,46 +670,114 @@ async def process_file(file: UploadFile = File(...)):
         df_source_avg["power_kwh"] = df_source_avg["power_mw"] * 1000 / 4
         df_source_avg = df_source_avg.drop("power_mw", axis='columns')
 
-        merged_df = pd.merge(df_source_avg, df, on='malo', how='left')
-
-        del df_source_avg, df
-        print("🫚🫚🫚🫚")
-
-        for df, col in [(merged_df, 'time_berlin'), (df_dayahead_avg, 'time_berlin')]:
-            df['year'] = df[col].dt.year
-            df['month'] = df[col].dt.month
-            df['day'] = df[col].dt.day
-            df['hour'] = df[col].dt.hour
-
-        df_dayahead_avg.drop_duplicates(subset=['year','month','day', 'hour'],inplace=True)
-
-        print("🫚🫚🫚")
-        ram_check()
-
-
-        # Step 1: Define expected count per month
-        expected_rows_per_month = 28 * 96
-        # Step 2: Count actual rows per malo, year, month
-        month_counts = (
-            merged_df
-            .groupby(['malo', 'year', 'month'])
-            .size()
-            .reset_index(name='actual_rows')
+        # ————————————————————————————————————
+        # 1. Merge and drop inputs immediately
+        merged = (
+            df_source_avg
+            .merge(df, on="malo", how="left")
         )
-        # Step 3: Check if each month is complete
-        month_counts['is_complete'] = month_counts['actual_rows'] >= expected_rows_per_month
-
-        # Step 4: Filter only the complete months
-        complete_months = month_counts[month_counts['is_complete']]
-
-        # Step 5: Merge the complete months back into the original data
-        merged_df = merged_df.merge(complete_months[['malo', 'year', 'month']], on=['malo', 'year', 'month'], how='inner')
-
-        del complete_months, month_counts
+        
+        del df_source_avg, df
         gc.collect()
-        ram_check()
-        print("🥥🥥🥥🥥🥥")
 
+        print("🫚 after merge")
+        ram_check()
+
+        # ————————————————————————————————————
+        # 2. Extract datetime parts for both merged & dayahead in one shot
+
+        # Rename your datetime columns to the same name so you can batch process them
+        merged = merged.rename(columns={"time_berlin": "dt"})
+        df_dayahead_avg = df_dayahead_avg.rename(columns={"time_berlin": "dt"})
+
+        # Stack them so we can extract once, then split again
+        stacked = (
+            pd.concat(
+                [
+                    merged.assign(_source="merged"),
+                    df_dayahead_avg.assign(_source="dayahead"),
+                ],
+                ignore_index=True,
+            )
+            .assign(
+                year=lambda d: d["dt"].dt.year.astype("int16"),
+                month=lambda d: d["dt"].dt.month.astype("int8"),
+                day=lambda d: d["dt"].dt.day.astype("int8"),
+                hour=lambda d: d["dt"].dt.hour.astype("int8"),
+            )
+        )
+
+        # Split back out
+        merged = stacked.query('_source == "merged"').drop(columns=["_source", "dt"])
+        df_dayahead_avg = (
+            stacked.query('_source == "dayahead"')
+            .drop(columns=["_source", "dt"])
+            .drop_duplicates(subset=["year","month","day","hour"])
+            .reset_index(drop=True)
+        )
+        del stacked
+        gc.collect()
+
+        print("🫚🫚 after datetime extraction")
+        ram_check()
+
+        # ————————————————————————————————————
+        # 3. Filter to complete months in one shot
+
+        # Count rows per (malo, year, month) and keep only those >= threshold
+        threshold = 28 * 96
+        counts = (
+            merged
+            .groupby(["malo","year","month"], observed=True)
+            .size()
+            .reset_index(name="count")
+        )
+        good = counts.loc[counts["count"] >= threshold, ["malo","year","month"]]
+
+        # Inner‐join back
+        merged = merged.merge(good, on=["malo","year","month"], how="inner")
+        
+        del counts, good
+        gc.collect()
+        print("🥥 after filtering complete months")
+        ram_check()
+
+        # ————————————————————————————————————
+        # 4. Join with dayahead and drop now‐unneeded frames
+
+        dpm = (
+            merged
+            .merge(
+                df_dayahead_avg,
+                on=["year","month","day","hour"],
+                suffixes=("", "_price"),
+                how="inner",
+            )
+            .drop(columns=["time_berlin_price"], errors="ignore")
+        )
+        del merged, df_dayahead_avg
+        gc.collect()
+
+        print("🥨 after joining day‐ahead")
+        ram_check()
+
+        # ————————————————————————————————————
+        # 5. Final join with rmv – convert ‘tech’ to categorical first
+
+        dpm["tech"] = dpm["tech"].str.strip().str.upper().astype("category")
+        df_rmv["tech"] = df_rmv["tech"].str.strip().str.upper().astype("category")
+
+        merge_prod_rmv_dayahead = dpm.merge(
+            df_rmv,
+            on=["tech","year","month"],
+            how="left",
+        )
+        merge_prod_rmv_dayahead["time_berlin"] = merge_prod_rmv_dayahead["time_berlin"].dt.tz_localize(None)
+
+        del dpm, df_rmv
+        gc.collect()
+
+        print("🥥🥥🥥🥥🥥")
         print("🥕🥕") 
 
 
