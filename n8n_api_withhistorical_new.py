@@ -685,8 +685,6 @@ async def process_file(file: UploadFile = File(...)):
             .dt.floor('h')           # floor down to the hour
         )
 
-        df_source_avg.drop(columns=['time_berlin'], inplace=True)
-
         df_dayahead_avg['time_hour'] = (
             df_dayahead_avg['time_berlin']
             .dt.floor('h')
@@ -743,8 +741,6 @@ async def process_file(file: UploadFile = File(...)):
 
         dayaheadprice_production_merge["tech"] = dayaheadprice_production_merge["tech"].str.strip().str.upper().astype("category")
 
-        #dayaheadprice_production_merge.drop(columns=['time_hour_price', 'time_hour'], inplace=True)
-
         del merged_df, 
         del df_dayahead_avg
         gc.collect()
@@ -754,8 +750,6 @@ async def process_file(file: UploadFile = File(...)):
 
         
         df_rmv["tech"] = df_rmv["tech"].str.strip().str.upper().astype("category")
-
-
 
         merge_prod_rmv_dayahead = dayaheadprice_production_merge.merge(
             df_rmv,
@@ -781,7 +775,7 @@ async def process_file(file: UploadFile = File(...)):
         merge_prod_rmv_dayahead.rename(columns={'power_kwh':'production_kwh'}, inplace=True)
         merge_prod_rmv_dayahead.drop(columns = ["tech"], inplace=True)
         
-        merge_prod_rmv_dayahead_dropdup = merge_prod_rmv_dayahead.drop_duplicates(subset=["malo","time_hour","production_kwh"])
+        merge_prod_rmv_dayahead_dropdup = merge_prod_rmv_dayahead.drop_duplicates(subset=["malo","time_berlin","production_kwh"])
         
         ram_check()
         del merge_prod_rmv_dayahead
