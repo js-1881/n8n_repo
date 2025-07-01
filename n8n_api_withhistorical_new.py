@@ -818,7 +818,7 @@ async def process_file(file: UploadFile = File(...)):
         merge_b1 = pd.merge(year_agg, merge_a2, on = "malo", how = "left")
 
         ram_check()
-        del year_agg, merge_a2
+        del year_agg
         gc.collect()
 
         
