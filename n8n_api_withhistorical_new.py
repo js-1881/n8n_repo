@@ -804,15 +804,18 @@ async def process_file(file: UploadFile = File(...)):
         ram_check()
         print("🌶️🌶️🌶️🌶️")
 
-        year_agg = monthly_agg.groupby(['malo'])['weighted_eur_mwh_monthly'].mean().reset_index(name='prod_weighted_eur_mwh')
-
+        #year_agg = monthly_agg.groupby(['malo'])['weighted_eur_mwh_monthly'].mean().reset_index(name='prod_weighted_eur_mwh')
+        
         year_agg = monthly_agg.groupby(['malo'], dropna=False).agg(
             prod_weighted_eur_mwh = ('weighted_eur_mwh_monthly','mean'),
             available_months=('available_months', 'first'),
         ).reset_index()
+
+        print("year_agg")
+        print(year_agg)
         
         ram_check()
-        del monthly_agg
+        #del monthly_agg
         print("🌶️🌶️🌶️🌶️🌶️")
         gc.collect()
         ram_check()
@@ -821,6 +824,9 @@ async def process_file(file: UploadFile = File(...)):
         year_agg['malo'] = year_agg['malo'].astype(str).str.strip()
 
         merge_b1 = pd.merge(merge_a2, year_agg, on = "malo", how = "left")
+        
+        print("merge_b1")
+        print(merge_b1)
 
         ram_check()
 
