@@ -723,7 +723,7 @@ async def process_file(file: UploadFile = File(...)):
             suffixes=('','_price'),
         )
 
-        dayaheadprice_production_merge.drop(columns=['time_berlin_price'], inplace=True)
+        dayaheadprice_production_merge.drop(columns=['time_berlin_price', 'time_hour'], inplace=True)
 
         del merged_df, df_dayahead_avg
         gc.collect()
@@ -752,6 +752,75 @@ async def process_file(file: UploadFile = File(...)):
         ram_check()
         del dayaheadprice_production_merge, df_rmv
         gc.collect()
+
+        print("🍌🍌🍌")
+        # WORKS UNTIL THIS
+        # WORKS UNTIL THIS
+        
+        merge_prod_rmv_dayahead_dropdup.drop(columns = ["tech","year","month"], inplace=True)
+        merge_prod_rmv_dayahead.rename(columns={'power_kwh':'production_kwh'}, inplace=True)
+        merge_prod_rmv_dayahead_dropdup = merge_prod_rmv_dayahead.drop_duplicates(subset=["malo","time_berlin","production_kwh"])
+
+        print("🌶️")
+        ram_check()
+        del merge_prod_rmv_dayahead
+        gc.collect()
+        ram_check()
+
+        merge_prod_rmv_dayahead_dropdup['deltaspot_eur'] = ((merge_prod_rmv_dayahead_dropdup['production_kwh'] * merge_prod_rmv_dayahead_dropdup['dayaheadprice'] / 1000) -
+            (merge_prod_rmv_dayahead_dropdup['production_kwh'] * merge_prod_rmv_dayahead_dropdup['monthly_reference_market_price_eur_mwh'] / 1000))
+
+        merge_prod_rmv_dayahead_dropdup.drop(columns = ['dayaheadprice','monthly_reference_market_price_eur_mwh'], inplace=True)
+
+        ram_check()
+        print("🌶️🌶️")
+
+        monthly_agg = merge_prod_rmv_dayahead_dropdup.groupby(['year', 'month', 'malo']).agg(
+            deltaspot_eur_monthly=('deltaspot_eur', 'sum'),
+            available_months=('available_month_after_filter', 'first'),
+            #Marktstammdatenregister=('unit_mastr_id', 'first'),
+            #tech=('tech', 'first'),
+        ).reset_index()
+
+        # total production over the years (not limited to 1 year)
+        total_prod = merge_prod_rmv_dayahead_dropdup.groupby(['malo'])['production_kwh'].sum()
+
+        print("🌶️🌶️🌶️")
+        ram_check()
+        del merge_prod_rmv_dayahead_dropdup
+        gc.collect()
+
+        # Map that total back to the original monthly_agg rows
+        monthly_agg['total_prod_kwh'] = monthly_agg.set_index(['malo']).index.map(total_prod)
+        monthly_agg['total_prod_mwh'] = monthly_agg['total_prod_kwh'] / 1000
+
+        monthly_agg.drop(columns = ['total_prod_kwh'], inplace=True)
+
+        monthly_agg['weighted_eur_mwh_monthly'] = (
+            monthly_agg['deltaspot_eur_monthly'] / monthly_agg['total_prod_mwh'] * monthly_agg['available_months']
+        )
+
+        ram_check()
+        print("🌶️🌶️🌶️🌶️")
+
+        year_agg = monthly_agg.groupby(['malo'])['weighted_eur_mwh_monthly'].mean().reset_index(name='prod_weighted_eur_mwh')
+        
+        ram_check()
+        del monthly_agg
+        print("🌶️🌶️🌶️🌶️🌶️")
+        gc.collect()
+        ram_check()
+        
+        year_agg.columns = year_agg.columns.str.strip()
+        year_agg['malo'] = year_agg['malo'].astype(str).str.strip()
+
+        merge_b1 = pd.merge(year_agg, merge_a2, on = "malo", how = "left")
+
+        ram_check()
+        del year_agg, merge_a2
+        gc.collect()
+
+        
         
         
         print("🥥🥥🥥🥥🥥")
@@ -772,6 +841,7 @@ async def process_file(file: UploadFile = File(...)):
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             merge_a2.to_excel(writer,    sheet_name="Processed Data",   index=False)
+            merge_b1.to_excel(writer,    sheet_name="COMBINE Data",   index=False)
             #year_agg.to_excel(writer, sheet_name="year_agg", index=False)
             #df_enervis_pivot_filter.to_excel(writer, sheet_name="Historical Results", index=False)
             #final_weighted_blindleister.to_excel(writer, sheet_name="final_weighted_blindleister", index=False)
