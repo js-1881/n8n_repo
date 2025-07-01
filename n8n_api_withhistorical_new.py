@@ -709,7 +709,9 @@ async def process_file(file: UploadFile = File(...)):
         merged_df = df_source_avg.merge(complete_months, on=['malo','month'], how='inner')
         merged_df.drop(columns='month', inplace=True)
 
-        del complete_months, month_counts, df_source_avg
+        del complete_months, month_counts
+        #del df_source_avg
+        
         ram_check()
         print("🫚🫚 after filtering complete months")
         ram_check()
@@ -725,7 +727,8 @@ async def process_file(file: UploadFile = File(...)):
 
         dayaheadprice_production_merge.drop(columns=['time_berlin_price', 'time_hour'], inplace=True)
 
-        del merged_df, df_dayahead_avg
+        #del merged_df, 
+        del df_dayahead_avg
         gc.collect()
 
         print("🫚🫚🫚 after joining day‐ahead")
@@ -841,12 +844,12 @@ async def process_file(file: UploadFile = File(...)):
         print(df_source_avg['malo'].value_counts())
         
         # Check distribution of 'malo' after dropping duplicates
-        print("After drop_duplicates:")
-        print(merge_prod_rmv_dayahead_dropdup['malo'].value_counts())
+        #print("After drop_duplicates:")
+        #print(merge_prod_rmv_dayahead_dropdup['malo'].value_counts())
         
         # Check size of grouped dataframe (for sanity check)
-        print("After groupby:")
-        print(merge_prod_rmv_dayahead_dropdup.groupby(['malo']).size())
+        #print("After groupby:")
+        #print(merge_prod_rmv_dayahead_dropdup.groupby(['malo']).size())
         
         # After merging with complete months, ensure all 'malo' are intact
         print("After merging with complete_months:")
