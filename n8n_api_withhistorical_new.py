@@ -716,7 +716,7 @@ async def process_file(file: UploadFile = File(...)):
         merged_df.drop(columns='month', inplace=True)
 
         del complete_months, month_counts
-        del df_source_avg
+        #del df_source_avg
         
         ram_check()
         print("🫚🫚 after filtering complete months")
