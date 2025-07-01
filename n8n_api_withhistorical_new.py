@@ -594,8 +594,8 @@ async def process_file(file: UploadFile = File(...)):
                                        engine='openpyxl',
                                       )
 
-        df.columns = df.columns.str.strip()
-        df['malo'] = df['malo'].astype(str).str.strip()
+        df_source_temp.columns = df_source_temp.columns.str.strip()
+        df_source_temp['malo'] = df_source_temp['malo'].astype(str).str.strip()
         
         df_source_temp['time_berlin'] = pd.to_datetime(
                     df_source_temp['time_berlin'], 
