@@ -670,35 +670,35 @@ async def process_file(file: UploadFile = File(...)):
         df_source_avg["power_kwh"] = df_source_avg["power_mw"] * 1000 / 4
         df_source_avg = df_source_avg.drop("power_mw", axis='columns')
 
-
         print("NEW METHOD")
         print("🧋🧋🧋") 
 
         df_source_avg['time_hour'] = (
             df_source_avg['time_berlin']
             .dt.tz_localize(None)    
-            .dt.floor('H')           # floor down to the hour
+            .dt.floor('h')           # floor down to the hour
         )
 
         df_dayahead_avg['time_hour'] = (
             df_dayahead_avg['time_berlin']
-            .dt.floor('H')
+            .dt.floor('h')
         )
 
         df['tech'] = df['tech'].astype('category')
-        tech_map = df.set_index('malo')['tech']
-        merged_df['tech'] = merged_df['malo'].map(tech_map).astype('category')
+        tech_map = df.groupby('malo')['tech'].first()
+        df_source_avg['tech'] = df_source_avg['malo'].map(tech_map).astype('category')
 
-        del df_source_avg, tech_map
+        ram_check()
+        del tech_map, df
         gc.collect()
 
         print("🫚 after merge")
         ram_check()
 
         expected_rows_per_month = 28 * 96
-        merged_df['month'] = merged_df['time_hour'].dt.to_period('M')
+        df_source_avg['month'] = df_source_avg['time_hour'].dt.to_period('M')
         month_counts = (
-            merged_df
+            df_source_avg
             .groupby(['malo','month'])
             .size()
             .reset_index(name='actual_rows')
@@ -706,10 +706,10 @@ async def process_file(file: UploadFile = File(...)):
 
         month_counts['is_complete'] = month_counts['actual_rows'] >= expected_rows_per_month
         complete_months = month_counts.loc[month_counts['is_complete'], ['malo','month']]
-        merged_df = merged_df.merge(complete_months, on=['malo','month'], how='inner')
+        merged_df = df_source_avg.merge(complete_months, on=['malo','month'], how='inner')
         merged_df.drop(columns='month', inplace=True)
 
-        del complete_months, month_counts
+        del complete_months, month_counts, df_source_avg
         ram_check()
         print("🫚🫚 after filtering complete months")
         ram_check()
@@ -745,13 +745,14 @@ async def process_file(file: UploadFile = File(...)):
             how="left",
         )
 
-        merge_prod_rmv_dayahead.drop(columns=['year','month'], inplace=True)
+        #merge_prod_rmv_dayahead.drop(columns=['year','month'], inplace=True)
         #merge_prod_rmv_dayahead["time_berlin"] = merge_prod_rmv_dayahead["time_berlin"].dt.tz_localize(None)
 
         print("🫚🫚🫚🫚 after joining rmv")
         ram_check()
         del dayaheadprice_production_merge, df_rmv
         gc.collect()
+        
         
         print("🥥🥥🥥🥥🥥")
         print("🥕🥕") 
