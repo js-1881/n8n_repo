@@ -836,6 +836,28 @@ async def process_file(file: UploadFile = File(...)):
         print("🥥🥥🥥🥥🥥")
         print("🥕🥕") 
 
+        # Before groupby or merging, print the distribution of 'malo'
+        print("Before groupby:")
+        print(df_source_avg['malo'].value_counts())
+        
+        # Check distribution of 'malo' after dropping duplicates
+        print("After drop_duplicates:")
+        print(merge_prod_rmv_dayahead_dropdup['malo'].value_counts())
+        
+        # Check size of grouped dataframe (for sanity check)
+        print("After groupby:")
+        print(merge_prod_rmv_dayahead_dropdup.groupby(['malo']).size())
+        
+        # After merging with complete months, ensure all 'malo' are intact
+        print("After merging with complete_months:")
+        print(merged_df['malo'].value_counts())
+        
+        # If necessary, check for NaN in malo
+        print("NaN values in 'malo':", merged_df['malo'].isna().sum())
+        
+        # After final merge_b1 check
+        print("Before final merge_b1:")
+        print(merge_b1['malo'].value_counts())
 
 
        
