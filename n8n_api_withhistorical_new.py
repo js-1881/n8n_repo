@@ -325,7 +325,7 @@ async def process_file(file: UploadFile = File(...)):
         # Step 5: Process data
         df_blind_fetch = df_blind_fetch[df_blind_fetch["energy_source"] == 'wind']
         df_blind_fetch['net_power_mw'] = df_blind_fetch['net_power_kw'] / 1000
-        df_blind_fetch = df_blind_fetch.drop(columns= ["net_power_kw"], inplace=True))
+        df_blind_fetch = df_blind_fetch.drop(columns= ["net_power_kw"], inplace=True)
 
         def clean_name(name):
             name = str(name).lower()
