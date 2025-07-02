@@ -688,9 +688,14 @@ async def process_file(file: UploadFile = File(...)):
             .dt.floor('h')
         )
 
+        df_dayahead_avg.drop(columns=['time_berlin'], inplace=True)
+        df_dayahead_avg = df_dayahead_avg.drop_duplicates(subset=["time_hour","dayaheadprice"])
+        
         df['tech'] = df['tech'].astype('category')
         tech_map = df.groupby('malo')['tech'].first()
         df_source_avg['tech'] = df_source_avg['malo'].map(tech_map).astype('category')
+
+        print(df_dayahead_avg.head(5))
 
         ram_check()
         del tech_map, df
@@ -715,6 +720,7 @@ async def process_file(file: UploadFile = File(...)):
 
         del complete_months, month_counts
         del df_source_avg
+        gc.collect()
         
         ram_check()
         print("🫚🫚 after filtering complete months")
@@ -725,12 +731,10 @@ async def process_file(file: UploadFile = File(...)):
             merged_df,
             df_dayahead_avg,
             on= 'time_hour',
-            how='inner',
-            suffixes=('','_price'),
+            how='inner'
         )
 
-
-        dayaheadprice_production_merge.drop(columns=['time_berlin_price', 'time_hour'], inplace=True)
+        dayaheadprice_production_merge.drop(columns=['time_hour'], inplace=True)
 
         del merged_df
         del df_dayahead_avg
