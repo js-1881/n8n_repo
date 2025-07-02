@@ -213,6 +213,10 @@ async def process_file(file: UploadFile = File(...)):
                     continue
         
         df_flat = pd.DataFrame(records)
+
+        del records
+        gc.collect()
+        
         df_flat = pd.json_normalize(
             records,
             record_path="months",
@@ -240,8 +244,7 @@ async def process_file(file: UploadFile = File(...)):
             "monthly_market_price_eur_mwh",
             "monthly_reference_market_price_eur_mwh",
         ]
-        df_flat = df_flat[cols]
-        df_all_flat = df_flat.copy()
+        df_all_flat = df_flat[cols]
 
         del df_flat
         gc.collect()
