@@ -269,7 +269,7 @@ async def process_file(file: UploadFile = File(...)):
             values='weighted_year_agg_per_unit_eur_mwh'
         ).reset_index()
 
-        del df_year_agg_per_unit
+        del df_year_agg_per_unit, year_agg_per_unit
         gc.collect()
         
         
@@ -325,7 +325,7 @@ async def process_file(file: UploadFile = File(...)):
         # Step 5: Process data
         df_blind_fetch = df_blind_fetch[df_blind_fetch["energy_source"] == 'wind']
         df_blind_fetch['net_power_mw'] = df_blind_fetch['net_power_kw'] / 1000
-        df_blind_fetch = df_blind_fetch.drop(columns= ["net_power_kw"], inplace=True)
+        df_blind_fetch.drop(columns= ["net_power_kw"], inplace=True)
 
         def clean_name(name):
             name = str(name).lower()
@@ -468,8 +468,7 @@ async def process_file(file: UploadFile = File(...)):
         df_final['hub_height_m_numeric'] = pd.to_numeric(df_final['hub_height_m'], errors='coerce')
 
         df_final['hub_height_m'] = (df_final['hub_height_m_numeric'].apply(lambda x: int(x) if pd.notna(x) else ""))
-        
-        df_final = df_final.drop(columns=['hub_height_m_numeric'], inplace=True)
+        df_final.drop(columns=['hub_height_m_numeric'], inplace=True)
 
         #df_final = df_final.dropna(subset=["latitude"])
         print("🍣🍣🍣")
@@ -556,7 +555,7 @@ async def process_file(file: UploadFile = File(...)):
             right_on = ('id'),
             how='left'
         )
-        merge_a2 = merge_a2.drop(columns=['id'], inplace=True)
+        merge_a2.drop(columns=['id'], inplace=True)
 
         del df_enervis_pivot_filter, merge_a1
         gc.collect()
@@ -674,7 +673,7 @@ async def process_file(file: UploadFile = File(...)):
 
         df_source_avg = grouped["power_mw"].apply(custom_power_mwh).reset_index()
         df_source_avg["power_kwh"] = df_source_avg["power_mw"] * 1000 / 4
-        df_source_avg = df_source_avg.drop("power_mw", axis='columns')
+        df_source_avg.drop("power_mw", axis='columns')
 
         print("NEW METHOD")
         print("🧋🧋🧋") 
@@ -689,10 +688,6 @@ async def process_file(file: UploadFile = File(...)):
             df_dayahead_avg['time_berlin']
             .dt.floor('h')
         )
-        
-        df_dayahead_avg = df_dayahead_avg.drop(columns=['time_berlin'], inplace=True)
-        df_dayahead_avg = df_dayahead_avg.drop_duplicates(subset=["time_hour","dayaheadprice"])
-        print(df_dayahead_avg.head(15))
 
         df['tech'] = df['tech'].astype('category')
         tech_map = df.groupby('malo')['tech'].first()
@@ -717,7 +712,7 @@ async def process_file(file: UploadFile = File(...)):
         month_counts['is_complete'] = month_counts['actual_rows'] >= expected_rows_per_month
         complete_months = month_counts.loc[month_counts['is_complete'], ['malo','month']]
         merged_df = df_source_avg.merge(complete_months, on=['malo','month'], how='inner')
-        merged_df = merged_df.drop(columns=['month'], inplace=True)
+        merged_df.drop(columns='month', inplace=True)
 
         del complete_months, month_counts
         del df_source_avg
@@ -732,27 +727,26 @@ async def process_file(file: UploadFile = File(...)):
             df_dayahead_avg,
             on= 'time_hour',
             how='inner',
-            #suffixes=('','_price'),
+            suffixes=('','_price'),
         )
 
-        print(dayaheadprice_production_merge.head(15))
 
-        dayaheadprice_production_merge = dayaheadprice_production_merge.drop(columns=['time_hour'], inplace=True)
+        dayaheadprice_production_merge.drop(columns=['time_berlin_price', 'time_hour'], inplace=True)
 
-        dayaheadprice_production_merge['year']  = dayaheadprice_production_merge['time_berlin'].dt.year.astype('int16')
-        dayaheadprice_production_merge['month'] = dayaheadprice_production_merge['time_berlin'].dt.month.astype('int8')
-
-        dayaheadprice_production_merge["tech"] = dayaheadprice_production_merge["tech"].str.strip().str.upper().astype("category")
-
-        del merged_df, 
+        del merged_df
         del df_dayahead_avg
         gc.collect()
 
         print("🫚🫚🫚 after joining day‐ahead")
         ram_check()
 
-        
+        dayaheadprice_production_merge['year']  = dayaheadprice_production_merge['time_berlin'].dt.year.astype('int16')
+        dayaheadprice_production_merge['month'] = dayaheadprice_production_merge['time_berlin'].dt.month.astype('int8')
+
+        dayaheadprice_production_merge["tech"] = dayaheadprice_production_merge["tech"].str.strip().str.upper().astype("category")
         df_rmv["tech"] = df_rmv["tech"].str.strip().str.upper().astype("category")
+
+
 
         merge_prod_rmv_dayahead = dayaheadprice_production_merge.merge(
             df_rmv,
@@ -763,12 +757,10 @@ async def process_file(file: UploadFile = File(...)):
         #merge_prod_rmv_dayahead.drop(columns=['year','month'], inplace=True)
         #merge_prod_rmv_dayahead["time_berlin"] = merge_prod_rmv_dayahead["time_berlin"].dt.tz_localize(None)
 
-        
+        print("🫚🫚🫚🫚 after joining rmv")
         ram_check()
         del dayaheadprice_production_merge, df_rmv
         gc.collect()
-        print("🫚🫚🫚🫚 after joining rmv")
-        ram_check()
 
         print("🍌🍌🍌")
         # WORKS UNTIL THIS
@@ -777,8 +769,7 @@ async def process_file(file: UploadFile = File(...)):
         
         merge_prod_rmv_dayahead.rename(columns={'power_kwh':'production_kwh'}, inplace=True)
         merge_prod_rmv_dayahead.drop(columns = ["tech"], inplace=True)
-        
-        merge_prod_rmv_dayahead_dropdup = merge_prod_rmv_dayahead.drop_duplicates(subset=["malo","time_berlin","production_kwh"])
+        merge_prod_rmv_dayahead.drop_duplicates(subset=["malo","time_berlin","production_kwh"])
         
         ram_check()
         del merge_prod_rmv_dayahead
