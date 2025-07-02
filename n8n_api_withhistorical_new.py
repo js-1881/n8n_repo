@@ -556,7 +556,7 @@ async def process_file(file: UploadFile = File(...)):
             right_on = ('id'),
             how='left'
         )
-        merge_a2 = merge_a2.drop(columns=['id'], inplace=True))
+        merge_a2 = merge_a2.drop(columns=['id'], inplace=True)
 
         del df_enervis_pivot_filter, merge_a1
         gc.collect()
