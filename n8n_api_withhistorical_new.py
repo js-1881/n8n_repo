@@ -325,7 +325,7 @@ async def process_file(file: UploadFile = File(...)):
         # Step 5: Process data
         df_blind_fetch = df_blind_fetch[df_blind_fetch["energy_source"] == 'wind']
         df_blind_fetch['net_power_mw'] = df_blind_fetch['net_power_kw'] / 1000
-        df_blind_fetch = df_blind_fetch.drop(columns= "net_power_kw")
+        df_blind_fetch = df_blind_fetch.drop(columns= ["net_power_kw"], inplace=True))
 
         def clean_name(name):
             name = str(name).lower()
@@ -556,7 +556,7 @@ async def process_file(file: UploadFile = File(...)):
             right_on = ('id'),
             how='left'
         )
-        merge_a2 = merge_a2.drop(columns=['id'])
+        merge_a2 = merge_a2.drop(columns=['id'], inplace=True))
 
         del df_enervis_pivot_filter, merge_a1
         gc.collect()
@@ -717,7 +717,7 @@ async def process_file(file: UploadFile = File(...)):
         month_counts['is_complete'] = month_counts['actual_rows'] >= expected_rows_per_month
         complete_months = month_counts.loc[month_counts['is_complete'], ['malo','month']]
         merged_df = df_source_avg.merge(complete_months, on=['malo','month'], how='inner')
-        merged_df = merged_df.drop(columns='month', inplace=True)
+        merged_df = merged_df.drop(columns=['month'], inplace=True)
 
         del complete_months, month_counts
         del df_source_avg
