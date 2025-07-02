@@ -325,7 +325,7 @@ async def process_file(file: UploadFile = File(...)):
         # Step 5: Process data
         df_blind_fetch = df_blind_fetch[df_blind_fetch["energy_source"] == 'wind']
         df_blind_fetch['net_power_mw'] = df_blind_fetch['net_power_kw'] / 1000
-        df_blind_fetch.drop(columns= "net_power_kw")
+        df_blind_fetch = df_blind_fetch.drop(columns= "net_power_kw")
 
         def clean_name(name):
             name = str(name).lower()
@@ -469,7 +469,7 @@ async def process_file(file: UploadFile = File(...)):
 
         df_final['hub_height_m'] = (df_final['hub_height_m_numeric'].apply(lambda x: int(x) if pd.notna(x) else ""))
         
-        df_final.drop(columns=['hub_height_m_numeric'], inplace=True)
+        df_final = df_final.drop(columns=['hub_height_m_numeric'], inplace=True)
 
         #df_final = df_final.dropna(subset=["latitude"])
         print("🍣🍣🍣")
@@ -690,7 +690,7 @@ async def process_file(file: UploadFile = File(...)):
             .dt.floor('h')
         )
         
-        #df_dayahead_avg.drop(columns=['time_berlin'], inplace=True)
+        df_dayahead_avg = df_dayahead_avg.drop(columns=['time_berlin'], inplace=True)
         df_dayahead_avg = df_dayahead_avg.drop_duplicates(subset=["time_hour","dayaheadprice"])
         print(df_dayahead_avg.head(15))
 
@@ -717,7 +717,7 @@ async def process_file(file: UploadFile = File(...)):
         month_counts['is_complete'] = month_counts['actual_rows'] >= expected_rows_per_month
         complete_months = month_counts.loc[month_counts['is_complete'], ['malo','month']]
         merged_df = df_source_avg.merge(complete_months, on=['malo','month'], how='inner')
-        merged_df.drop(columns='month', inplace=True)
+        merged_df = merged_df.drop(columns='month', inplace=True)
 
         del complete_months, month_counts
         del df_source_avg
@@ -737,7 +737,7 @@ async def process_file(file: UploadFile = File(...)):
 
         print(dayaheadprice_production_merge.head(15))
 
-        dayaheadprice_production_merge.drop(columns=['time_hour'], inplace=True)
+        dayaheadprice_production_merge = dayaheadprice_production_merge.drop(columns=['time_hour'], inplace=True)
 
         dayaheadprice_production_merge['year']  = dayaheadprice_production_merge['time_berlin'].dt.year.astype('int16')
         dayaheadprice_production_merge['month'] = dayaheadprice_production_merge['time_berlin'].dt.month.astype('int8')
