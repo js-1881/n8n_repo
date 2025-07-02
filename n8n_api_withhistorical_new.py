@@ -690,8 +690,9 @@ async def process_file(file: UploadFile = File(...)):
             .dt.floor('h')
         )
         
-        df_dayahead_avg.drop(columns=['time_berlin'], inplace=True)
+        #df_dayahead_avg.drop(columns=['time_berlin'], inplace=True)
         df_dayahead_avg = df_dayahead_avg.drop_duplicates(subset=["time_hour","dayaheadprice"])
+        print(df_dayahead_avg.head(15))
 
         df['tech'] = df['tech'].astype('category')
         tech_map = df.groupby('malo')['tech'].first()
@@ -733,6 +734,8 @@ async def process_file(file: UploadFile = File(...)):
             how='inner',
             #suffixes=('','_price'),
         )
+
+        print(dayaheadprice_production_merge.head(15))
 
         dayaheadprice_production_merge.drop(columns=['time_hour'], inplace=True)
 
