@@ -382,6 +382,11 @@ async def process_file(file: UploadFile = File(...)):
             "Vestas V162" : "N-163/6800",
             "V 150-4.2 MW" : "V-150 4.2MW (PO)",
             "Vestas V112-3.3 MW MK2A" : "V-112 3.3MW",
+            "V 80 - 2.0MW / Mode 105.1 dB" : "V-80 2.0MW GridStreamer",
+            "NTK600/43" : "V-44 0.6MW",
+            "NTK 600 - 180" : "V-44 0.6MW",
+        
+            "V 80 - 2.0MW / Moder 105.1 dB" : "V-80 2.0MW GridStreamer",
         
             "Nordex N149-5.7 MW" : "N-149/5700",
             "Nordex N149-5.X" : "N-149/5700",
@@ -417,9 +422,17 @@ async def process_file(file: UploadFile = File(...)):
             "E115 EP3 E3" : "E-115 EP3 4.2MW",
             "E-53/S/72/3K/02" : "E-53 0.8MW",
             "E82 E 2 2.3MW" :"E-82 E2 2.3MW",
+            "E-40 0.5MW" : "E-40/5.40",
+        
+            "NM48/600" : "NM_48_600",
+            "NEG MICON NM 600/48" : "NM_48_600",
+        
         
             "E-70 E4 2300" : "E-70 E4 2.3MW",
             "E 82 Serrations" : "E-82 E2 2.3MW",
+            "E40/540/E1" : "E-40/5.40",
+            "TW600": "TW 600-43",
+        
         
             "MM-92" : "MM 92 2.05MW",
             "MM92 2.05MW" : "MM 92 2.05MW",
