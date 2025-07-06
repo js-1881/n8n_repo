@@ -331,7 +331,8 @@ async def process_file(file: UploadFile = File(...)):
 
         def clean_name(name):
             name = str(name).lower()
-            for word in ['gmbh', 'se', 'deutschland', 'central europe', 'energy', 'gmbh & co. kg']:
+            for word in ['gmbh', 'se', 'deutschland', 'central europe', 'energy', 
+                    'gmbh & co. kg', 'energy gmbh', 'deutschland gmbh']:
                 name = name.replace(word, '')
             return name.strip()
 
@@ -339,7 +340,7 @@ async def process_file(file: UploadFile = File(...)):
 
         def clean_turbine(name):
             if not isinstance(name, str): return ''
-            for word in ['senvion', 'enercon', 'mit Serrations', 'Vensys']:
+            for word in ['senvion', 'Senvion', 'Enercon', 'enercon', 'mit Serrations', 'Vensys', 'NEG MICON']:
                 name = name.replace(word, '')
             return name.strip()
 
@@ -348,7 +349,7 @@ async def process_file(file: UploadFile = File(...)):
         df_blind_fetch['add_turbine'] = df_blind_fetch['turbine_model']
 
         df_blind_fetch.loc[
-            df_blind_fetch['manufacturer'].isin(['Vestas Deutschland GmbH', 'Senvion Deutschland GmbH', 'ENERCON GmbH', 'VENSYS Energy AG', 'Enron Wind GmbH']),
+            df_blind_fetch['manufacturer'].isin(['Vestas Deutschland GmbH', 'Senvion Deutschland GmbH', 'ENERCON GmbH', 'VENSYS Energy AG', 'Enron Wind GmbH', 'NEG Micon Deutschland GmbH']),
             'add_turbine'
         ] = df_blind_fetch['turbine_model_clean'].astype(str).str.strip() + ' ' + df_blind_fetch['net_power_mw'].round(3).astype(str) + 'MW'
         
@@ -424,8 +425,9 @@ async def process_file(file: UploadFile = File(...)):
             "E82 E 2 2.3MW" :"E-82 E2 2.3MW",
             "E-40 0.5MW" : "E-40/5.40",
         
-            "NM48/600" : "NM_48_600",
-            "NEG MICON NM 600/48" : "NM_48_600",
+            "NM48/600" : "NM 48/600",
+            "NEG MICON NM 600/48" : "NM 48/600",
+            "NM600/48" : "NM 48/600",
         
         
             "E-70 E4 2300" : "E-70 E4 2.3MW",
