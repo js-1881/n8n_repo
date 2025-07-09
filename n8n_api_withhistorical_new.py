@@ -213,10 +213,7 @@ async def process_file(file: UploadFile = File(...)):
                     continue
         
         df_flat = pd.DataFrame(records)
-
-        del records
-        gc.collect()
-        
+      
         df_flat = pd.json_normalize(
             records,
             record_path="months",
@@ -230,6 +227,7 @@ async def process_file(file: UploadFile = File(...)):
             ],
             errors="ignore"  # in case some records lack "months"
         )
+
         
         cols = [
             "year",
@@ -246,7 +244,7 @@ async def process_file(file: UploadFile = File(...)):
         ]
         df_all_flat = df_flat[cols]
 
-        del df_flat
+        del df_flat, records
         gc.collect()
         
         df_all_flat['weighted_per_mwh_monthly'] = (
