@@ -369,6 +369,7 @@ async def process_file(file: UploadFile = File(...)):
         ref_response.raise_for_status()
         df_ref = pd.read_excel(io.BytesIO(ref_response.content))
 
+        # 4. Hardcoded matches
         hardcoded_map = {
             "V90 MK8 Gridstreamer": "V-90 2.0MW Gridstreamer",
             "V126-3.45MW": "V-126 3.45MW",
@@ -401,6 +402,29 @@ async def process_file(file: UploadFile = File(...)):
             "Nordex N133-4.8" : "N-133/4800",
             "Nordex N133/4.8 4800" : "N-133/4800",
         
+            "N 90-2.5" : "N-90/2500",
+            "Nordex N149 4500" : "N-149/4500",
+            "Nordex N131 3600" : "N-131/3600",
+        
+            "N 117-2.4" : "N-117/2400",
+            "NordexN131 3300": "N-131/3300",
+        
+            "Vestas V90 2.0MW": "V-90 2.0MW Gridstreamer",
+            "V150-4.2 4.2MW": "V-150 4.0MW",
+            "V150-4.2": "V-150 4.0MW",
+            "N 117-2.4": "N-117/2400",
+        
+            "E-66 1.8MW": "E-66/18.70",
+            "E-66": "E-66/18.70",
+            "E 53-0.81": "E-53 0.8MW",
+        
+            "V-80 2.0MW": "V-80 2.0MW GridStreamer",
+            "V-80": "V-80 2.0MW GridStreamer",
+        
+            "V150 4.2": "V-150 4.2MW (PO)",
+            "E-138 EP3 E2-HAT-160-ES-C-01": "E-138 EP3 4.2MW",
+            "N 131-3300": "N-131/3300",
+        
             "Nordex N117/3600" : "N-117/3600",
             "N117/3.6" : "N-117/3600",
             
@@ -422,6 +446,10 @@ async def process_file(file: UploadFile = File(...)):
             "E-53/S/72/3K/02" : "E-53 0.8MW",
             "E82 E 2 2.3MW" :"E-82 E2 2.3MW",
             "E-40 0.5MW" : "E-40/5.40",
+        
+            "E 53-0.81": "E-53 0.8MW",
+            "E 53-0.81 0.8MW": "E-53 0.8MW",
+        
         
             "NM48/600" : "NM 48/600",
             "NEG MICON NM 600/48" : "NM 48/600",
